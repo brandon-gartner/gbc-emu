@@ -1,0 +1,7 @@
+class Cartridge {
+    private:
+
+
+    public:
+        
+};
