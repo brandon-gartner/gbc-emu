@@ -6,7 +6,7 @@
 class cartridge {
     public:
         std::string file_name;
-        uint8_t file_data[];
+        uint8_t *file_data; // we don't know how big it will be, yet.
         uint8_t file_size;
 
     private:
