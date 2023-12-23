@@ -1,22 +1,30 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
+#include <cstdint>
+#include <string>
 
 class cartridge {
+    public:
+        std::string file_name;
+        uint8_t file_data[];
+        uint8_t file_size;
+
     private:
-        // entry_point; //
-        // nintendo_logo; //
-        // game_title:
-        // manufacturer_code:
-        // gbc_enabled:
-        // new_publisher_code:
-        // sgb_enabled:
-        // cartridge_type:
-        // rom_size:
-        // ram_size:
-        // old_publisher_code:
-        // rom_version_number:
-        // header_checksum:
-        // global_checksum:
+        // parts of cartridge header
+        uint8_t entry_point;
+        uint8_t nintendo_logo;
+        uint8_t game_title;
+        uint8_t manufacturer_code;
+        uint8_t gbc_enabled;
+        uint8_t new_publisher_code;
+        uint8_t sgb_enabled;
+        uint8_t cartridge_type;
+        uint8_t rom_size;
+        uint8_t ram_size;
+        uint8_t old_publisher_code;
+        uint8_t rom_version_number;
+        uint8_t header_checksum;
+        uint8_t global_checksum;
     public:
         bool load_cartridge(char **argv);
 };
