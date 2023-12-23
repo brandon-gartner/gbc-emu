@@ -10,4 +10,8 @@ Following the docs from:
 
 - <https://gekkio.fi/files/gb-docs/gbctr.pdf>
 
+Used for testing:
+
+- <https://github.com/wheremyfoodat/Gameboy-logs>
+
 This will start off as a Game Boy emulator, and transition into a Game Boy Colour emulator
