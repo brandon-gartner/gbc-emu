@@ -6,3 +6,5 @@ todo.txt
 src/*.gb
 src/*.gbc
 src/*.out
+obj/
+emu
