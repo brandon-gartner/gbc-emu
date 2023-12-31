@@ -3,3 +3,6 @@ roms/loz.gbc
 roms/pokemon_gold.gbc
 todo.txt
 .vscode/
+src/*.gb
+src/*.gbc
+src/*.out
