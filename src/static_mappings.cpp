@@ -1,8 +1,6 @@
-#include <map>
-#include <string>
-#include <cstdint>
+#include "static_mappings.h"
 
-std::map<uint8_t, std::string> new_publisher_code = {
+std::map<uint8_t, std::string> static_mappings::new_publisher_codes = {
     {0x00, "None"},
     {0x01, "Nintendo R&D1"},
     {0x08, "Capcom"},
@@ -34,7 +32,7 @@ std::map<uint8_t, std::string> new_publisher_code = {
     {0x51, "Acclaim"},
     {0x52, "Activision"},
     {0x53, "American sammy"},
-    {0x54, "Konami"}, //??? there are two?
+    {0x54, "Konami"},  //??? there are two?
     {0x55, "Hi tech entertainment"},
     {0x56, "LJN"},
     {0x57, "Matchbox"},
@@ -44,7 +42,7 @@ std::map<uint8_t, std::string> new_publisher_code = {
     {0x61, "Virgin"},
     {0x64, "LucasArts"},
     {0x67, "Ocean"},
-    {0x69, "Electronic Arts"}, //??? EA too
+    {0x69, "Electronic Arts"},  //??? EA too
     {0x70, "Infogrames"},
     {0x71, "Interplay"},
     {0x72, "Broderbund"},
@@ -58,7 +56,7 @@ std::map<uint8_t, std::string> new_publisher_code = {
     {0x87, "Tsukuda Original"},
     {0x91, "Chunsoft"},
     {0x92, "Video system"},
-    {0x93, "Ocean/Acclaim"}, // also duplicated
+    {0x93, "Ocean/Acclaim"},  // also duplicated
     {0x95, "Varie"},
     {0x96, "Yonezawa/s\"pal"},
     {0x97, "Kaneko"},
@@ -67,7 +65,7 @@ std::map<uint8_t, std::string> new_publisher_code = {
     {0xA4, "Konami (Yu-Gi-Oh!)"},
 };
 
-std::map<uint8_t, std::string> cartridge_type = {
+std::map<uint8_t, std::string> static_mappings::cartridge_type = {
     {0x00, "ROM ONLY"},
     {0x01, "MBC1"},
     {0x02, "MBC1+RAM"},
@@ -102,7 +100,7 @@ std::map<uint8_t, std::string> cartridge_type = {
 // each rom bank corresponds to 16384 b (at least in terms of math)
 // ill be using this for conversions
 // and to not need a second map
-std::map<uint8_t, int> rom_banks = {
+std::map<uint8_t, int> static_mappings::rom_banks = {
     {0x00, 2},
     {0x01, 4},
     {0x02, 8},
@@ -115,7 +113,7 @@ std::map<uint8_t, int> rom_banks = {
 };
 
 // A lot of duplicates exist in here, not sure on why
-std::map<uint8_t, std::string> old_publisher_code = {
+std::map<uint8_t, std::string> static_mappings::old_publisher_code = {
     {0x00, "None"},
     {0x01, "Nintendo"},
     {0x08, "Capcom"},
@@ -265,9 +263,10 @@ std::map<uint8_t, std::string> old_publisher_code = {
     {0xFF, "LJN"},
 };
 
-std::map<uint8_t, std::string> destination_code = {
+std::map<uint8_t, std::string> static_mappings::destination_codes = {
     {0x00, "Japan and International"},
     {0x01, "International only"},
 };
 
-// TODO: RAM SIZE DICT 
+// TODO: RAM SIZE DICT
+

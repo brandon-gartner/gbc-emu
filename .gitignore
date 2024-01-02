@@ -6,5 +6,8 @@ todo.txt
 src/*.gb
 src/*.gbc
 src/*.out
+*.gb
+*.gbc
+*.out
 obj/
 emu
