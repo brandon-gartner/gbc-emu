@@ -32,9 +32,9 @@ int emulator::run(int argc, char **argv) {
 }
 
 int emulator::start() {
-    while (this->current != emulator::status::stopped) {
-        this->cpu.step();
-    }
+    // while (this->current != emulator::status::stopped) {
+    this->cpu.step();
+    // }
 
     return 0;
 }

@@ -134,7 +134,7 @@ std::map<uint8_t, std::string> static_mappings::old_publisher_code = {
     {0x30, "Infogrames"},
     {0x31, "Nintendo"},
     {0x32, "Bandai"},
-    {0x33, "Check New Publisher Codes"},
+    {0x33, "Check new publisher"},
     {0x34, "Konami"},
     {0x35, "HectorSoft"},
     {0x38, "Capcom"},
@@ -269,4 +269,3 @@ std::map<uint8_t, std::string> static_mappings::destination_codes = {
 };
 
 // TODO: RAM SIZE DICT
-

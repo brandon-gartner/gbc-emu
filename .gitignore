@@ -1,7 +1,6 @@
-roms/dr_mario.gb
-roms/loz.gbc
-roms/pokemon_gold.gbc
-todo.txt
+roms/*.gb
+roms/*.gbc
+*.txt
 .vscode/
 src/*.gb
 src/*.gbc

@@ -77,14 +77,7 @@ bool cartridge::load_cartridge(char** argv) {
     file.seekg(0x14D);
     file.read((char*)&this->header_checksum, 1);
 
-    // verify header checksum, provided by Pan Docs
-    uint8_t checksum = 0;
-    for (uint16_t address = 0x0134; address <= 0x014C; address++) {
-        checksum = checksum - this->file_data[address] - 1;
-    }
-
-    if (checksum != this->header_checksum) {
-        std::cout << "Header checksum failed." << std::endl;
+    if (!verify_header_checksum(true)) {
         return false;
     }
 
@@ -98,12 +91,53 @@ bool cartridge::load_cartridge(char** argv) {
     return true;
 }
 
+bool cartridge::verify_header_checksum(bool debug) {
+    // verify header checksum, provided by Pan Docs
+    uint8_t checksum = 0;
+    // std::cout << "Initial checksum: " << checksum << std::endl;
+    for (uint16_t address = 0x0134; address <= 0x014C; address++) {
+        // std::cout << "Pre-math checksum: " << std::hex << (int)checksum << std::endl;
+        // std::cout << "Data at current location 1: " << std::hex << (int)this->file_data[address] << std::endl;
+        checksum = checksum - this->file_data[address] - 1;
+        // std::cout << "Post-math checksum: " << std::hex << (int)checksum << std::endl;
+        // std::cout << "===============================================" << std::endl;
+    }
+
+    if (debug) {
+        std::cout << "Expected: " << std::hex << (int)this->header_checksum << std::endl;
+        std::cout << "Actual: " << std::hex << (int)checksum << std::endl;
+    }
+
+    if (checksum != this->header_checksum) {
+        std::cout << "Header checksum failed." << std::endl;
+
+        return false;
+    }
+
+    return true;
+}
+
 cartridge::cartridge(char** argv) {
     this->load_cartridge(argv);
     // std::cout << this->file_size << std::endl;
 }
 
 cartridge::cartridge() {
+}
+
+void cartridge::print_header_hex() {
+    int count = 0;
+    for (uint16_t address = 0x100; address <= 0x14F; address++) {
+        if (count == 0) {
+            std::cout << std::hex << address << ": ";
+        }
+        std::cout << ((int)this->file_data[address] > 15 ? "" : "0") << std::hex << (int)this->file_data[address] << " ";
+        count++;
+        if (count == 16) {
+            std::cout << std::endl;
+            count = 0;
+        }
+    }
 }
 
 void cartridge::print_cartridge_info() {
@@ -118,6 +152,10 @@ void cartridge::print_cartridge_info() {
     std::cout << "ROM size: " << this->rom_size << std::endl;
     std::cout << "Destination: " << this->destination << std::endl;
     std::cout << "Valid: " << (this->valid ? "true" : "false") << std::endl;
+    if (!this->valid) {
+        // verify_header_checksum(true);
+    }
+    // print_header_hex();
     std::cout << "======================================================================" << std::endl;
     std::cout << std::endl;
 }
