@@ -1,9 +1,6 @@
 #ifndef STATIC_MAPPINGS_H
 #define STATIC_MAPPINGS_H
-
-#include <cstdint>
-#include <map>
-#include <string>
+#include "shared.h"
 
 class static_mappings {
    public:

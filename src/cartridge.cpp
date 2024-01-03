@@ -1,8 +1,5 @@
 #include "cartridge.h"
 
-#include <fstream>
-#include <iostream>
-
 #include "static_mappings.h"
 
 bool cartridge::load_cartridge(char** argv) {
@@ -138,6 +135,14 @@ void cartridge::print_header_hex() {
             count = 0;
         }
     }
+}
+
+uint8_t cartridge::read_cart(uint16_t address) {
+    return this->file_data[address];
+}
+
+bool cartridge::write_cart(uint8_t value, uint16_t address) {
+    NOT_IMPLEMENTED();
 }
 
 void cartridge::print_cartridge_info() {

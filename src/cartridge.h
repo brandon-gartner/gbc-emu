@@ -1,8 +1,6 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
-#include <cstdint>
-#include <string>
-
+#include "shared.h"
 class cartridge {
    public:
     std::string file_name;
@@ -41,6 +39,8 @@ class cartridge {
     void print_cartridge_info();
     void print_header_hex();
     bool verify_header_checksum(bool debug);
+    uint8_t read_cart(uint16_t);
+    bool write_cart(uint8_t, uint16_t);
 };
 
 #endif

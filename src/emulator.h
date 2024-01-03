@@ -2,6 +2,7 @@
 #define EMULATOR_H
 #include "cartridge.h"
 #include "processor.h"
+#include "shared.h"
 
 class emulator {
    public:

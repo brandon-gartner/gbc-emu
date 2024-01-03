@@ -1,7 +1,5 @@
 #include "emulator.h"
 
-#include <iostream>
-
 #include "cartridge.h"
 
 emulator::status emulator::get_status() {

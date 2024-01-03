@@ -10,3 +10,4 @@ src/*.out
 *.out
 obj/
 emu
+resources/*.png
