@@ -1,6 +1,8 @@
 #include "databus.h"
 
-// databus(emulator* emu) {
+#include "emulator.h"
+
+// databus::databus(emulator* emu) : emu(emu) {
 //     this->emu = emu;
 // }
 

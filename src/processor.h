@@ -1,5 +1,10 @@
 #ifndef PROCESSOR_H
 #define PROCESSOR_H
+#include <algorithm>
+#include <cctype>
+#include <functional>
+#include <unordered_map>
+
 #include "shared.h"
 
 class processor {
@@ -11,7 +16,7 @@ class processor {
     } processor_status;
 
     uint8_t get_reg_8(char);
-    uint8_t get_reg_16(std::string);
+    uint16_t get_reg_16(std::string);
 
     int step();
     uint8_t fetch();

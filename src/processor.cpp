@@ -29,25 +29,46 @@ uint8_t processor::get_reg_8(char c) {
 }
 
 uint16_t processor::get_reg_16(std::string s) {
-    // TODO: lowercase s
-    switch (s) {
-        case std::to_string("af"):
-            return append(reg_a, reg_f);
-        case std::to_string("bc"):
-            return append(reg_b, reg_c);
-        case std::to_string("de"):
-            return append(reg_d, reg_e);
-        case std::to_string("hl"):
-            return append(reg_h, reg_l);
-        case std::to_string("sp"):
-            return reg_sp;
-        case std::to_string("pc"):
-            return reg_pc;
-        default:
-            std::cout << "Invalid 16-bit register accessed.  Program terminated." << std::endl;
-            exit(1);
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    std::unordered_map<std::string, std::function<uint16_t()>> regMap = {
+        {"af", [this]() { return append(reg_a, reg_f); }},
+        {"bc", [this]() { return append(reg_b, reg_c); }},
+        {"de", [this]() { return append(reg_d, reg_e); }},
+        {"hl", [this]() { return append(reg_h, reg_l); }},
+        {"sp", [this]() { return reg_sp; }},
+        {"pc", [this]() { return reg_pc; }},
+    };
+
+    auto it = regMap.find(s);
+    if (it != regMap.end()) {
+        return it->second();
+    } else {
+        std::cout << "Invalid 16-bit register accessed.  Program terminated." << std::endl;
+        exit(1);
     }
 }
+
+// uint16_t processor::get_reg_16(std::string s) {
+//     // TODO: lowercase s
+//     switch (s) {
+//         case std::to_string("af"):
+//             return append(reg_a, reg_f);
+//         case std::to_string("bc"):
+//             return append(reg_b, reg_c);
+//         case std::to_string("de"):
+//             return append(reg_d, reg_e);
+//         case std::to_string("hl"):
+//             return append(reg_h, reg_l);
+//         case std::to_string("sp"):
+//             return reg_sp;
+//         case std::to_string("pc"):
+//             return reg_pc;
+//         default:
+//             std::cout << "Invalid 16-bit register accessed.  Program terminated." << std::endl;
+//             exit(1);
+//     }
+// }
 
 uint16_t append(uint8_t first, uint8_t second) {
     int returned = 0;
