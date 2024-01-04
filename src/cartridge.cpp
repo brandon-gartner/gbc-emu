@@ -12,12 +12,14 @@ bool cartridge::load_cartridge(char** argv) {
     }
 
     this->file_size = file.tellg();  // gets current position in input sequence; in this case, the end of the file.
-    this->file_data = new uint8_t[this->file_size];
+
+    std::cout << "File size: " << this->file_size << std::endl;
+
+    this->file_data = new uint8_t[this->file_size]();
 
     file.seekg(0, std::ios::beg);  // sets the position of the 'next character' as the first character in the file.
 
     file.read((char*)this->file_data, this->file_size);
-
     // skip to byte 0x100, beginning of the header, and store it.
     // this is the entry point, tells us how to jump to the main program
     file.seekg(0x100);
@@ -74,9 +76,9 @@ bool cartridge::load_cartridge(char** argv) {
     file.seekg(0x14D);
     file.read((char*)&this->header_checksum, 1);
 
-    if (!verify_header_checksum(true)) {
-        return false;
-    }
+    // if (!verify_header_checksum(true)) {
+    //     return false;
+    // }
 
     // not verified so I'll leave it until I'm looking for something to do
     // file.seekg(0x14E);
@@ -116,7 +118,7 @@ bool cartridge::verify_header_checksum(bool debug) {
 
 cartridge::cartridge(char** argv) {
     this->load_cartridge(argv);
-    // std::cout << this->file_size << std::endl;
+    std::cout << this->file_size << std::endl;
 }
 
 cartridge::cartridge() {
@@ -124,6 +126,7 @@ cartridge::cartridge() {
 
 void cartridge::print_header_hex() {
     int count = 0;
+    std::cout << std::endl;
     for (uint16_t address = 0x100; address <= 0x14F; address++) {
         if (count == 0) {
             std::cout << std::hex << address << ": ";
@@ -135,6 +138,24 @@ void cartridge::print_header_hex() {
             count = 0;
         }
     }
+    std::cout << std::endl;
+}
+
+void cartridge::print_beginning_hex() {
+    int count = 0;
+    std::cout << std::endl;
+    for (uint16_t address = 0x0; address <= 0x14F; address++) {
+        if (count == 0) {
+            std::cout << std::hex << address << ": ";
+        }
+        std::cout << ((int)this->file_data[address] > 15 ? "" : "0") << std::hex << (int)this->file_data[address] << " ";
+        count++;
+        if (count == 16) {
+            std::cout << std::endl;
+            count = 0;
+        }
+    }
+    std::cout << std::endl;
 }
 
 uint8_t cartridge::read_cart(uint16_t address) {
@@ -160,7 +181,7 @@ void cartridge::print_cartridge_info() {
     if (!this->valid) {
         // verify_header_checksum(true);
     }
-    // print_header_hex();
+    print_header_hex();
     std::cout << "======================================================================" << std::endl;
     std::cout << std::endl;
 }

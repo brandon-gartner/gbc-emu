@@ -5,7 +5,7 @@ class cartridge {
    public:
     std::string file_name;
     uint8_t *file_data = {0};  // we don't know how big it will be, yet.
-    uint16_t file_size;
+    uint32_t file_size;
     std::string game_title;
     std::string new_publisher;
     std::string cartridge_type;
@@ -38,6 +38,7 @@ class cartridge {
     bool load_cartridge(char **argv);
     void print_cartridge_info();
     void print_header_hex();
+    void print_beginning_hex();
     bool verify_header_checksum(bool debug);
     uint8_t read_cart(uint16_t);
     bool write_cart(uint8_t, uint16_t);
