@@ -42,7 +42,13 @@ class instruction {
     };
 
     enum addressing_mode {
-
+        REG_16D,
+        REG_REG,
+        MEMREG_REG,
+        REG,
+        REG_8D,
+        REG_MEMREG,
+        IMPLIED,
     };
 
     enum register_type {

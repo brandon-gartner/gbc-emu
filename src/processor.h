@@ -5,6 +5,7 @@
 #include <functional>
 #include <unordered_map>
 
+#include "instruction.h"
 #include "shared.h"
 
 class processor {
@@ -32,9 +33,11 @@ class processor {
     uint8_t reg_l;
     uint16_t reg_sp;
     uint16_t reg_pc;
+
     uint16_t fetch_result;
     uint16_t memory_address;
     uint8_t opcode;
+    instruction *current;
 };
 
 #endif
