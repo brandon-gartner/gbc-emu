@@ -5,9 +5,11 @@
 #include <functional>
 #include <unordered_map>
 
+#include "emulator.h"
 #include "instruction.h"
 #include "shared.h"
 
+class emulator;
 class processor {
    public:
     enum {
@@ -15,12 +17,20 @@ class processor {
         stopped,
         stepping,
     } processor_status;
+    emulator* emu;
 
-    uint8_t get_reg_8(char);
-    uint16_t get_reg_16(std::string);
+    // uint8_t get_reg_8(char);
+    // uint16_t get_reg_16(std::string);
+
+    // uint8_t get_reg_8(register_type);
+    // uint16_t get_reg_16(register_type);
+    uint16_t get_reg(register_type);
 
     int step();
-    uint8_t fetch();
+    void fetch_decode();
+    void fetch();
+    void decode();
+    void execute();
 
    private:
     uint8_t reg_a;
@@ -35,9 +45,10 @@ class processor {
     uint16_t reg_pc;
 
     uint16_t fetch_result;
-    uint16_t memory_address;
+    uint16_t destination_address;
+    bool destination_is_memory;
     uint8_t opcode;
-    instruction *current;
+    instruction* current;
 };
 
 #endif

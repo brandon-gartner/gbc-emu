@@ -16,10 +16,10 @@ int emulator::run(int argc, char **argv) {
         return 1;
     }
     std::cout << "Loading ROM file: " << argv[1] << std::endl;
-    this->cart = cartridge(argv);
-    this->cart.print_cartridge_info();
+    this->cart = new cartridge(argv);
+    this->cart->print_cartridge_info();
 
-    if (!this->cart.valid) {
+    if (!this->cart->valid) {
         std::cout << "ROM file failed to load." << std::endl;
         return 1;
     }
@@ -31,10 +31,14 @@ int emulator::run(int argc, char **argv) {
 
 int emulator::start() {
     // while (this->current != emulator::status::stopped) {
-    this->cpu.step();
+    this->cpu->step();
     // }
 
     return 0;
+}
+
+int emulator::add_cycles(int cycles) {
+    NOT_IMPLEMENTED();
 }
 
 // setup:

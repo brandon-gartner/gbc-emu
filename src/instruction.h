@@ -1,3 +1,6 @@
+#ifndef INSTRUCTION_H
+#define INSTRUCTION_H
+
 #include "shared.h"
 
 // represents a game boy instruction, from the game boy instruction set sheet.
@@ -6,72 +9,21 @@
 class instruction {
    private:
    public:
-    enum instruction_type {
-        NONE,
-        NOP,
-        LD,
-        INC,
-        DEC,
-        RLCA,
-        ADD,
-        RRCA,
-        STOP,
-        RLA,
-        JR,
-        RRA,
-        DAA,
-        CPL,
-        SCF,
-        CCF,
-        HALT,
-        ADC,
-        SUB,
-        SBC,
-        AND,
-        XOR,
-        OR,
-        CP,
-        RET,
-        POP,
-        JP,
-        CALL,
-        PUSH,
-        RST,
-        RETI,
-        CB,
-    };
+    static std::map<uint8_t, instruction*> instruction_set;
 
-    enum addressing_mode {
-        REG_16D,
-        REG_REG,
-        MEMREG_REG,
-        REG,
-        REG_8D,
-        REG_MEMREG,
-        IMPLIED,
-    };
-
-    enum register_type {
-        NONE,
-        REG_A,
-        REG_F,
-        REG_B,
-        REG_C,
-        REG_D,
-        REG_E,
-        REG_H,
-        REG_L,
-        REG_AF,
-        REG_BC,
-        REG_DE,
-        REG_HL,
-        REG_SP,
-        REG_PC,
-    };
-
+    instruction(instruction_type type, addressing_mode mode)
+        : type(type), mode(mode) {}
+    instruction(instruction_type type, addressing_mode mode, register_type reg_1)
+        : type(type), mode(mode), reg_1(reg_1) {}
+    instruction(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2)
+        : type(type), mode(mode), reg_1(reg_1), reg_2(reg_2) {}
+    instruction(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2, uint8_t parameter)
+        : type(type), mode(mode), reg_1(reg_1), reg_2(reg_2), parameter(parameter) {}
     instruction_type type;
     addressing_mode mode;
     register_type reg_1;
     register_type reg_2;
     uint8_t parameter;
 };
+
+#endif
