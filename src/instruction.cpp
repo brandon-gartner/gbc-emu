@@ -2,6 +2,56 @@
 
 #include "shared.h"
 
+int instruction::execute() {
+    switch (this->type) {
+        case NOP:
+            break;
+        // case LD:
+        // case INC:
+        // case DEC:
+        // case RLCA:
+        // case ADD:
+        // case RRCA:
+        // case STOP:
+        // case RLA:
+        // case JR:
+        // case RRA:
+        // case DAA:
+        // case CPL:
+        // case SCF:
+        // case CCF:
+        // case HALT:
+        // case ADC:
+        // case SUB:
+        // case SBC:
+        // case AND:
+        // case XOR:
+        // case OR:
+        // case CP:
+        // case RET:
+        // case POP:
+        case JP:
+            jp();
+            break;
+
+            // case CALL:
+            // case PUSH:
+            // case RST:
+            // case RETI:
+            // case CB:
+        default:
+            NOT_IMPLEMENTED();
+    }
+    return 0;  // wrong, TODO: decide if return int or void
+}
+
+void instruction::jp() {
+    if (check_conditions()) {
+        cpu->set_pc(cpu->fetch_result);
+        cpu->emu->add_cycles(1);
+    }
+}
+
 std::map<uint8_t, instruction *> instruction::instruction_set = {
     {0x00, new instruction{instruction_type::NOP, addressing_mode::IMPLIED}},
     {0x05, new instruction{instruction_type::DEC, addressing_mode::REG, register_type::REG_B}},
@@ -144,3 +194,38 @@ std::map<uint8_t, instruction *> instruction::instruction_set = {
     // {0xFE, new instruction{instruction_type::CP, addressing_mode::D8}},
     // {0xFF, new instruction{instruction_type::RST, addressing_mode::D8}},
 };
+
+bool instruction::check_conditions() {
+    bool z = cpu->flag_z();
+    bool n = cpu->flag_n();
+    bool h = cpu->flag_h();
+    bool c = cpu->flag_c();
+
+    switch (this->cond) {
+        case condition_type::ALWAYS:
+            return true;
+        case condition_type::NZ:
+            return !z;
+        case condition_type::Z:
+            return z;
+        case condition_type::NC:
+            return !c;
+        case condition_type::C:
+            return c;
+        case condition_type::NH:
+            return !h;
+        case condition_type::H:
+            return h;
+        case condition_type::NN:
+            return !n;
+        case condition_type::N:
+            return n;
+        default:
+            std::cout << "Invalid condition type.  Program terminated." << std::endl;
+            exit(1);
+    }
+}
+
+void instruction::print() {
+    print_instruction(type, mode, reg_1, reg_2, cond, parameter);
+}

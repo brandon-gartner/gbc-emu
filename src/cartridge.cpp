@@ -13,8 +13,6 @@ bool cartridge::load_cartridge(char** argv) {
 
     this->file_size = file.tellg();  // gets current position in input sequence; in this case, the end of the file.
 
-    std::cout << "File size: " << this->file_size << std::endl;
-
     this->file_data = new uint8_t[this->file_size]();
 
     file.seekg(0, std::ios::beg);  // sets the position of the 'next character' as the first character in the file.
@@ -118,7 +116,6 @@ bool cartridge::verify_header_checksum(bool debug) {
 
 cartridge::cartridge(char** argv) {
     this->load_cartridge(argv);
-    std::cout << this->file_size << std::endl;
 }
 
 cartridge::cartridge() {

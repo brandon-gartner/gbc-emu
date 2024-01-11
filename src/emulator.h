@@ -17,7 +17,7 @@ class emulator {
     cartridge *cart;
     processor *cpu;
     databus *bus;
-
+    emulator();
     int run(int argc, char **argv);
     int start();
     int add_cycles(int cycles);

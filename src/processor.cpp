@@ -10,6 +10,13 @@ uint16_t append(uint8_t lo, uint8_t hi) {
     return returned;
 }
 
+processor::processor(emulator *emu) : emu(emu), fetch_result(0), destination_address(0), destination_is_memory(false), opcode(0), current(nullptr), reg_a(0), reg_f(0), reg_b(0), reg_c(0), reg_d(0), reg_e(0), reg_h(0), reg_l(0), reg_sp(0), reg_pc(0) {
+    processor_status = running;
+    reg_pc = 0x100;
+    fetch_result = 0;
+    reg_a = 0x01;
+}
+
 int processor::step() {
     if (processor_status == running || processor_status == stepping) {
         // fetch/decode
@@ -28,8 +35,10 @@ void processor::fetch_decode() {
 
 void processor::fetch() {
     opcode = emu->bus->read(reg_pc);
+    std::cout << "opcode: " << std::to_string(opcode) << std::endl;
     reg_pc++;
     current = instruction::instruction_set[opcode];
+    current->print();
 }
 
 void processor::decode() {
@@ -72,6 +81,7 @@ void processor::decode() {
 void processor::execute() {
     printf("Executing instruction: %02X\n", opcode);
     printf("Current PC: %04X\n", reg_pc);
+    current->execute();
     NOT_IMPLEMENTED();
 }
 
@@ -109,4 +119,25 @@ uint16_t processor::get_reg(register_type reg) {
             std::cout << "Invalid register accessed.  Program terminated." << std::endl;
             exit(1);
     }
+}
+
+void processor::set_pc(uint16_t value) {
+    reg_pc = value;
+}
+
+// TODO: test these better
+bool processor::flag_z() {
+    return (reg_f & 0x80) == 0x80;
+}
+
+bool processor::flag_n() {
+    return (reg_f & 0x40) == 0x40;
+}
+
+bool processor::flag_h() {
+    return (reg_f & 0x20) == 0x20;
+}
+
+bool processor::flag_c() {
+    return (reg_f & 0x10) == 0x10;
 }

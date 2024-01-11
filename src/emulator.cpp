@@ -2,6 +2,12 @@
 
 #include "cartridge.h"
 
+emulator::emulator() {
+    this->cpu = new processor(this);
+    this->bus = new databus(this);
+    this->current = emulator::status::stopped;
+}
+
 emulator::status emulator::get_status() {
     return this->current;
 }
@@ -30,15 +36,17 @@ int emulator::run(int argc, char **argv) {
 }
 
 int emulator::start() {
-    // while (this->current != emulator::status::stopped) {
-    this->cpu->step();
-    // }
+    while (this->current != emulator::status::stopped) {
+        this->cpu->step();
+    }
 
     return 0;
 }
 
 int emulator::add_cycles(int cycles) {
     NOT_IMPLEMENTED();
+    int temp_var = cycles;
+    return 0;
 }
 
 // setup:

@@ -2,9 +2,7 @@
 
 #include "emulator.h"
 
-// databus::databus(emulator* emu) : emu(emu) {
-//     this->emu = emu;
-// }
+databus::databus(emulator* emu) : emu(emu) {}
 
 uint8_t databus::read(uint16_t address) {
     if (address <= 0x8000) {
