@@ -1,5 +1,4 @@
-roms/*.gb
-roms/*.gbc
+roms/
 *.txt
 .vscode/
 src/*.gb
