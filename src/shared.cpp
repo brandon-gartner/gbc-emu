@@ -80,6 +80,10 @@ std::string print_addressing_mode(addressing_mode mode) {
             return "D8";
         case D16:
             return "D16";
+        case REG_HLPLUS:
+            return "REG_HLPLUS";
+        case REG_HLMINUS:
+            return "REG_HLMINUS";
         case MEMREG:
             return "MEMREG";
         case IMPLIED:

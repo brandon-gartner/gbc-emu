@@ -52,20 +52,51 @@ void processor::decode() {
     destination_address = 0;
     destination_is_memory = false;
     switch (current->mode) {
-        case addressing_mode::REG_D16:
-        case addressing_mode::REG_REG:
-        case addressing_mode::MEMREG_REG:
         case addressing_mode::REG:
             fetch_result = get_reg(current->reg_1);
             return;
+
+        case addressing_mode::REG_REG:
+            fetch_result = get_reg(current->reg_2);
+            return;
+
         case addressing_mode::REG_D8:
             fetch_result = emu->bus->read(reg_pc);
             emu->add_cycles(1);
             reg_pc++;
             return;
 
+        case addressing_mode::REG_D16: {
+            uint8_t lo = emu->bus->read(reg_pc);
+            emu->add_cycles(1);
+            reg_pc++;
+            uint8_t hi = emu->bus->read(reg_pc);
+            emu->add_cycles(1);
+            reg_pc++;
+            fetch_result = append(lo, hi);
+            return;
+        }
+
         case addressing_mode::REG_MEMREG:
+            uint16_t address = get_reg(current->reg_2);
+            fetch_result = emu->bus->read(address);
+            emu->add_cycles(1);
+            return;
+
+        case addressing_mode::REG_HLPLUS:
+            fetch_result = emu->bus->read(get_reg(current->reg_2));
+            emu->add_cycles(1);
+            set_reg(current->reg_2, true, get_reg(current->reg_2) + 1);
+            return;
+
+        case addressing_mode::REG_HLMINUS:
+            fetch_result = emu->bus->read(get_reg(current->reg_2));
+            emu->add_cycles(1);
+            set_reg(current->reg_2, true, get_reg(current->reg_2) - 1);
+
         case addressing_mode::D8:
+            return;
+
         case addressing_mode::D16: {
             uint8_t lo = emu->bus->read(reg_pc);
             emu->add_cycles(1);
@@ -77,6 +108,14 @@ void processor::decode() {
             return;
         }
         case addressing_mode::MEMREG:
+            return;
+
+        case addressing_mode::MEMREG_REG:
+            destination_is_memory = true;
+            fetch_result = get_reg(current->reg_2);
+            destination_address = get_reg(current->reg_1);
+            return;
+
         case addressing_mode::IMPLIED:
             return;
         default:
@@ -164,4 +203,92 @@ void processor::set_flag_h(bool flag) {
 
 void processor::set_flag_c(bool flag) {
     reg_f |= flag * 0x10;
+}
+
+void processor::set_reg_16(register_type type, uint16_t new_val) {
+}
+
+void processor::set_reg_8(register_type type, uint8_t new_val) {
+    switch (type) {
+        case REG_A:
+            reg_a = new_val;
+            return;
+        case REG_F:
+            reg_f = new_val;
+            return;
+        case REG_B:
+            reg_b = new_val;
+            return;
+        case REG_C:
+            reg_c = new_val;
+            return;
+        case REG_D:
+            reg_d = new_val;
+            return;
+        case REG_E:
+            reg_e = new_val;
+            return;
+        case REG_H:
+            reg_h = new_val;
+            return;
+        case REG_L:
+            reg_l = new_val;
+            return;
+
+        case NONE:
+        case REG_AF:
+        case REG_BC:
+        case REG_DE:
+        case REG_HL:
+        case REG_SP:
+        case REG_PC:
+            std::cout << "Invalid register for 8-bit register modification." << std::endl;
+            exit(1);
+    }
+}
+
+void processor::set_reg_16(register_type type, uint16_t new_val) {
+    switch (type) {
+        case NONE:
+        case REG_A:
+        case REG_F:
+        case REG_B:
+        case REG_C:
+        case REG_D:
+        case REG_E:
+        case REG_H:
+        case REG_L:
+            std::cout << "Invalid register for 16-bit register modification." << std::endl;
+            exit(1);
+        case REG_AF:
+            reg_a = new_val >> 8;
+            reg_f = new_val & 0xFF;
+            return;
+        case REG_BC:
+            reg_b = new_val >> 8;
+            reg_c = new_val & 0xFF;
+            return;
+        case REG_DE:
+            reg_d = new_val >> 8;
+            reg_e = new_val & 0xFF;
+            return;
+        case REG_HL:
+            reg_h = new_val >> 8;
+            reg_l = new_val & 0xFF;
+            return;
+        case REG_SP:
+            reg_sp = new_val;
+            return;
+        case REG_PC:
+            reg_pc = new_val;
+            return;
+    }
+}
+
+void processor::set_reg(register_type type, bool sixteen_bit, int new_val) {
+    if (sixteen_bit) {
+        set_reg_16(type, new_val);
+    } else {
+        set_reg_8(type, new_val);
+    }
 }

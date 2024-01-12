@@ -39,6 +39,7 @@ class processor {
     // uint8_t get_reg_8(register_type);
     // uint16_t get_reg_16(register_type);
     uint16_t get_reg(register_type);
+    void set_reg(register_type, bool, int);
 
     int step();
     void fetch_decode();
@@ -65,6 +66,8 @@ class processor {
     uint16_t reg_sp;
 
    private:
+    void set_reg_8(register_type, uint8_t);
+    void set_reg_16(register_type, uint16_t);
 };
 
 #endif

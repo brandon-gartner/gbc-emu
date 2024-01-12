@@ -74,6 +74,8 @@ enum addressing_mode {
     D16,
     MEMREG,
     IMPLIED,
+    REG_HLPLUS,
+    REG_HLMINUS
 };
 
 enum register_type {
