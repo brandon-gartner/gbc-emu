@@ -167,3 +167,9 @@ void print_instructions(instruction_type type, addressing_mode mode, register_ty
     std::cout << "    Cond: " << print_condition(cond) << std::endl;
     std::cout << "    Parameter: " << std::to_string(parameter) << std::endl;
 }
+
+std::string int_to_hex(uint8_t value) {
+    std::stringstream stream;
+    stream << std::setfill('0') << std::setw(2) << std::hex << (int)value;
+    return stream.str();
+}

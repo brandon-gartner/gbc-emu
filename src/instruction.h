@@ -25,7 +25,12 @@ class instruction {
     int execute();
     bool check_conditions();
     void print();
+    void simple_print();
+
+    // codes
+    void di();
     void jp();
+    void run_xor();
 
     processor* cpu;
     instruction_type type;

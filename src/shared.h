@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <fstream>
 #include <functional>
+#include <iomanip>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 
 #define NOT_IMPLEMENTED()                                                         \
@@ -12,37 +14,53 @@
     exit(1);
 
 enum instruction_type {
-    NOP,
-    LD,
-    INC,
-    DEC,
-    RLCA,
-    ADD,
-    RRCA,
-    STOP,
-    RLA,
-    JR,
-    RRA,
-    DAA,
-    CPL,
-    SCF,
-    CCF,
-    HALT,
     ADC,
-    SUB,
-    SBC,
+    ADD,
     AND,
-    XOR,
-    OR,
-    CP,
-    RET,
-    POP,
-    JP,
+    BIT,
     CALL,
-    PUSH,
-    RST,
-    RETI,
     CB,
+    CCF,
+    CP,
+    CPL,
+    DAA,
+    DEC,
+    DI,
+    EI,
+    ERR,
+    HALT,
+    INC,
+    JP,
+    JPHL,
+    JR,
+    LD,
+    LDH,
+    NOP,
+    OR,
+    POP,
+    PUSH,
+    RES,
+    RET,
+    RETI,
+    RL,
+    RLA,
+    RLC,
+    RLCA,
+    RR,
+    RRA,
+    RRC,
+    RRCA,
+    RST,
+    SBC,
+    SCF,
+    SET,
+    SLA,
+    SRA,
+    SRL,
+    STOP,
+    SUB,
+    SWAP,
+    XOR,
 };
 
 enum addressing_mode {
@@ -92,6 +110,7 @@ std::string print_condition(condition_type cond);
 std::string print_register(register_type reg);
 std::string print_addressing_mode(addressing_mode mode);
 std::string print_instruction_type(instruction_type type);
-void print_instruction(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2, condition_type cond, uint8_t parameter);
+void print_instructions(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2, condition_type cond, uint8_t parameter);
+std::string int_to_hex(uint8_t i);
 
 #endif

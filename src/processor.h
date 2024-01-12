@@ -20,10 +20,17 @@ class processor {
     } processor_status;
     emulator* emu;
 
-    bool flag_z();
-    bool flag_n();
-    bool flag_h();
-    bool flag_c();
+    uint16_t reg_pc;
+
+    bool get_flag_z();
+    bool get_flag_n();
+    bool get_flag_h();
+    bool get_flag_c();
+
+    void set_flag_z(bool);
+    void set_flag_n(bool);
+    void set_flag_h(bool);
+    void set_flag_c(bool);
 
     processor(emulator* emu);
     // uint8_t get_reg_8(char);
@@ -44,10 +51,9 @@ class processor {
     uint16_t fetch_result;
     uint16_t destination_address;
     bool destination_is_memory;
+    bool interrupt_enabled = true;
     uint8_t opcode;
     instruction* current;
-
-   private:
     uint8_t reg_a;
     uint8_t reg_f;
     uint8_t reg_b;
@@ -57,7 +63,8 @@ class processor {
     uint8_t reg_h;
     uint8_t reg_l;
     uint16_t reg_sp;
-    uint16_t reg_pc;
+
+   private:
 };
 
 #endif

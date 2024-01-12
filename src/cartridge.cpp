@@ -160,6 +160,7 @@ uint8_t cartridge::read_cart(uint16_t address) {
 }
 
 bool cartridge::write_cart(uint8_t value, uint16_t address) {
+    std::cout << "Cannot write to cartridge." << std::endl;
     NOT_IMPLEMENTED();
 }
 

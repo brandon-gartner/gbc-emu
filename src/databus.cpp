@@ -10,6 +10,7 @@ uint8_t databus::read(uint16_t address) {
         uint8_t value = emu->cart->read_cart(address);
         return value;
     } else {
+        std::cout << "Address is too large for current accepted cartridges." << std::endl;
         NOT_IMPLEMENTED()
     }
     return -5;
@@ -21,6 +22,7 @@ bool databus::write(uint8_t value, uint16_t address) {
         std::cout << "writing value " << std::to_string(value) << std::endl;
         return emu->cart->write_cart(value, address);
     } else {
+        std::cout << "Address is too large for current accepted cartridges." << std::endl;
         NOT_IMPLEMENTED()
     }
     return false;

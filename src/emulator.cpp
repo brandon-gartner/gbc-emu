@@ -44,7 +44,7 @@ int emulator::start() {
 }
 
 int emulator::add_cycles(int cycles) {
-    NOT_IMPLEMENTED();
+    // NOT_IMPLEMENTED();
     int temp_var = cycles;
     return 0;
 }
