@@ -32,6 +32,8 @@ class instruction {
     // codes
     void di();
     void jp();
+    void push();
+    void pop();
     void ld();
     void ldh();
     void run_xor();

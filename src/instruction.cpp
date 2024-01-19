@@ -14,35 +14,39 @@ int instruction::execute() {
         case LDH:
             ldh();
             break;
-        // case INC:
-        // case DEC:
-        // case RLCA:
-        // case ADD:
-        // case RRCA:
-        // case STOP:
-        // case RLA:
-        // case JR:
-        // case RRA:
-        // case DAA:
-        // case CPL:
-        // case SCF:
-        // case CCF:
-        // case HALT:
-        // case ADC:
-        // case SUB:
-        // case SBC:
-        // case AND:
-        // case XOR:
-        // case OR:
-        // case CP:
-        // case RET:
-        // case POP:
+            // case INC:
+            // case DEC:
+            // case RLCA:
+            // case ADD:
+            // case RRCA:
+            // case STOP:
+            // case RLA:
+            // case JR:
+            // case RRA:
+            // case DAA:
+            // case CPL:
+            // case SCF:
+            // case CCF:
+            // case HALT:
+            // case ADC:
+            // case SUB:
+            // case SBC:
+            // case AND:
+            // case XOR:
+            // case OR:
+            // case CP:
+            // case RET:
+        case PUSH:
+            push();
+            break;
+        case POP:
+            pop();
+            break;
         case JP:
             jp();
             break;
 
             // case CALL:
-            // case PUSH:
             // case RST:
             // case RETI:
             // case CB:
@@ -85,6 +89,40 @@ void instruction::ldh() {
     }
 
     cpu->emu->add_cycles(1);
+}
+
+// push and pop are always 16bit values
+
+// make sure no & 0xFF is needed here
+void instruction::push() {
+    uint16_t hi = cpu->get_reg(cpu->current->reg_1) >> 8;
+    cpu->emu->add_cycles(1);
+    cpu->emu->stack->stack_push8(hi);
+
+    uint16_t lo = cpu->get_reg(cpu->current->reg_1) & 0xFF;
+    cpu->emu->add_cycles(1);
+    cpu->emu->stack->stack_push8(lo);
+
+    cpu->emu->add_cycles(1);
+}
+
+void instruction::pop() {
+    uint16_t lo = cpu->emu->stack->stack_pop8();
+    cpu->emu->add_cycles(1);
+    uint16_t hi = cpu->emu->stack->stack_pop8();
+    cpu->emu->add_cycles(1);
+
+    uint16_t result = append(lo, hi);
+
+    if (cpu->current->reg_1 != register_type::REG_AF) {
+        cpu->set_reg(cpu->current->reg_1, true, result);
+    } else {
+        // this is the expected behaviour for AF, this way it also
+        // does not mess up the flags on original hardware
+        cpu->set_reg(cpu->current->reg_1, true, result & 0xFFF0);
+    }
+
+    // slightly different if AF:
 }
 
 void instruction::jp() {
@@ -224,18 +262,37 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0x7E, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_A, register_type::REG_HL}},
     {0x7F, new instruction{instruction_type::LD, addressing_mode::REG_REG, register_type::REG_A, register_type::REG_A}},
 
+    // 0x8
+
+    // 0x9
+
+    // 0xA
     {0xAF, new instruction{instruction_type::XOR, addressing_mode::REG, register_type::REG_A}},
+
+    // 0xB
+
+    // 0xC
+    {0xC1, new instruction{instruction_type::POP, addressing_mode::REG, register_type::REG_BC}},
     {0xC3, new instruction{instruction_type::JP, addressing_mode::D16}},
+    {0xC5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_BC}},
+
+    // 0xD
+    {0xD1, new instruction{instruction_type::POP, addressing_mode::REG, register_type::REG_DE}},
+    {0xD5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_DE}},
 
     // 0xE
     {0xE0, new instruction{instruction_type::LDH, addressing_mode::ADDR8_REG, register_type::NONE, register_type::REG_A}},
+    {0xE1, new instruction{instruction_type::POP, addressing_mode::REG, register_type::REG_HL}},
     {0xE2, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_C, register_type::REG_A}},
+    {0xE5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_HL}},
     {0xEA, new instruction{instruction_type::LD, addressing_mode::ADDR16_REG, register_type::NONE, register_type::REG_A}},
 
     // 0xF
     {0xF0, new instruction{instruction_type::LDH, addressing_mode::REG_ADDR8, register_type::REG_A}},
+    {0xF1, new instruction{instruction_type::POP, addressing_mode::REG, register_type::REG_AF}},
     {0xF2, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_A, register_type::REG_C}},
     {0xF3, new instruction{instruction_type::DI, addressing_mode::IMPLIED}},
+    {0xF5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_AF}},
     {0xFA, new instruction{instruction_type::LD, addressing_mode::REG_ADDR16, register_type::REG_A}},
 };
 

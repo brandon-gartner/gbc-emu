@@ -6,6 +6,7 @@
 #include "databus.h"
 #include "processor.h"
 #include "shared.h"
+#include "stack_c.h"
 
 class processor;
 class emulator {
@@ -19,6 +20,7 @@ class emulator {
     processor *cpu;
     databus *bus;
     ram *mem;
+    stack_c *stack;
     emulator();
     int run(int argc, char **argv);
     int start();

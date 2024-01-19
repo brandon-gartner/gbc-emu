@@ -29,6 +29,9 @@ uint8_t databus::read8(uint16_t address) {
         // reading from oam
         std::cout << "Reading from oam." << std::endl;
         NOT_IMPLEMENTED();
+    } else if (address == 0xFFFF) {
+        // reading from interrupt enable register
+        return emu->mem->get_interrupt();
     }
     return emu->mem->hram_read(address);
 }
@@ -57,6 +60,9 @@ void databus::write8(uint16_t address, uint8_t value) {
         // writing to oam
         std::cout << "Writing to oam." << std::endl;
         NOT_IMPLEMENTED();
+    } else if (address == 0xFFFF) {
+        // writing to interrupt enable register
+        emu->mem->set_interrupt(value);
     }
     emu->mem->hram_write(address, value);
 }
