@@ -1,6 +1,7 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
+#include "RAM.h"
 #include "cartridge.h"
 #include "databus.h"
 #include "processor.h"
@@ -17,6 +18,7 @@ class emulator {
     cartridge *cart;
     processor *cpu;
     databus *bus;
+    ram *mem;
     emulator();
     int run(int argc, char **argv);
     int start();

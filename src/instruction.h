@@ -33,6 +33,7 @@ class instruction {
     void di();
     void jp();
     void ld();
+    void ldh();
     void run_xor();
 
     processor* cpu;

@@ -313,12 +313,22 @@ void processor::set_reg_8(register_type type, uint8_t new_val) {
 
         case NONE:
         case REG_AF:
+            std::cout << "Invalid register for 8-bit register modification: AF" << std::endl;
+            exit(1);
         case REG_BC:
+            std::cout << "Invalid register for 8-bit register modification: BC" << std::endl;
+            exit(1);
         case REG_DE:
+            std::cout << "Invalid register for 8-bit register modification: DE" << std::endl;
+            exit(1);
         case REG_HL:
+            std::cout << "Invalid register for 8-bit register modification: HL" << std::endl;
+            exit(1);
         case REG_SP:
+            std::cout << "Invalid register for 8-bit register modification: SP" << std::endl;
+            exit(1);
         case REG_PC:
-            std::cout << "Invalid register for 8-bit register modification." << std::endl;
+            std::cout << "Invalid register for 8-bit register modification: PC" << std::endl;
             exit(1);
     }
 }

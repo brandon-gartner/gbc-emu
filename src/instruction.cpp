@@ -11,6 +11,9 @@ int instruction::execute() {
         case LD:
             ld();
             break;
+        case LDH:
+            ldh();
+            break;
         // case INC:
         // case DEC:
         // case RLCA:
@@ -72,6 +75,16 @@ void instruction::ld() {
 
     // TODO: verify that this is correct, should be?
     cpu->set_reg(cpu->current->reg_1, false, cpu->fetch_result);
+}
+
+void instruction::ldh() {
+    if (cpu->current->reg_1 == register_type::REG_A) {
+        cpu->set_reg(cpu->current->reg_1, false, cpu->fetch_result | 0xFF00);
+    } else {
+        cpu->emu->bus->write8(cpu->fetch_result | 0xFF00, cpu->get_reg(cpu->current->reg_2));
+    }
+
+    cpu->emu->add_cycles(1);
 }
 
 void instruction::jp() {
@@ -215,10 +228,12 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0xC3, new instruction{instruction_type::JP, addressing_mode::D16}},
 
     // 0xE
+    {0xE0, new instruction{instruction_type::LDH, addressing_mode::ADDR8_REG, register_type::NONE, register_type::REG_A}},
     {0xE2, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_C, register_type::REG_A}},
     {0xEA, new instruction{instruction_type::LD, addressing_mode::ADDR16_REG, register_type::NONE, register_type::REG_A}},
 
     // 0xF
+    {0xF0, new instruction{instruction_type::LDH, addressing_mode::REG_ADDR8, register_type::REG_A}},
     {0xF2, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_A, register_type::REG_C}},
     {0xF3, new instruction{instruction_type::DI, addressing_mode::IMPLIED}},
     {0xFA, new instruction{instruction_type::LD, addressing_mode::REG_ADDR16, register_type::REG_A}},

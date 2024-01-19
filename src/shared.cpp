@@ -99,6 +99,8 @@ std::string print_instruction_type(instruction_type type) {
             return "NOP";
         case LD:
             return "LD";
+        case DI:
+            return "DI";
         case INC:
             return "INC";
         case DEC:
@@ -175,6 +177,12 @@ void print_instructions(instruction_type type, addressing_mode mode, register_ty
 std::string int_to_hex(uint8_t value) {
     std::stringstream stream;
     stream << std::setfill('0') << std::setw(2) << std::hex << (int)value;
+    return stream.str();
+}
+
+std::string int_to_hex(uint16_t value) {
+    std::stringstream stream;
+    stream << std::setfill('0') << std::setw(4) << std::hex << (int)value;
     return stream.str();
 }
 
