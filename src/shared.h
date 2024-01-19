@@ -64,18 +64,28 @@ enum instruction_type {
 };
 
 enum addressing_mode {
-    REG_D16,
-    REG_REG,
-    MEMREG_REG,
     REG,
+    REG_REG,
     REG_D8,
+    REG_D16,
+    REG_ADDR8,
+    REG_ADDR16,
     REG_MEMREG,
-    D8,
-    D16,
-    MEMREG,
-    IMPLIED,
     REG_HLPLUS,
-    REG_HLMINUS
+    REG_HLMINUS,
+    D8,
+    D8_REG,
+    D16,
+    D16_REG,
+    ADDR8_REG,
+    ADDR16_REG,
+    MEMREG,
+    MEMREG_REG,
+    MEMREG_D8,
+    HLPLUS_REG,
+    HLMINUS_REG,
+    HL_SPTR,
+    IMPLIED,
 };
 
 enum register_type {
@@ -114,5 +124,7 @@ std::string print_addressing_mode(addressing_mode mode);
 std::string print_instruction_type(instruction_type type);
 void print_instructions(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2, condition_type cond, uint8_t parameter);
 std::string int_to_hex(uint8_t i);
+bool reg_is_8bit(register_type reg);
+uint16_t append(uint8_t, uint8_t);
 
 #endif

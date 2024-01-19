@@ -13,6 +13,8 @@ class instruction {
    public:
     static std::map<uint8_t, instruction*> instruction_set;
 
+    instruction(instruction_type type)
+        : type(type) {}
     instruction(instruction_type type, addressing_mode mode)
         : type(type), mode(mode) {}
     instruction(instruction_type type, addressing_mode mode, register_type reg_1)
@@ -30,6 +32,7 @@ class instruction {
     // codes
     void di();
     void jp();
+    void ld();
     void run_xor();
 
     processor* cpu;

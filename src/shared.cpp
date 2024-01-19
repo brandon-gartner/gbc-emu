@@ -177,3 +177,36 @@ std::string int_to_hex(uint8_t value) {
     stream << std::setfill('0') << std::setw(2) << std::hex << (int)value;
     return stream.str();
 }
+
+bool reg_is_8bit(register_type reg) {
+    switch (reg) {
+        case REG_A:
+        case REG_F:
+        case REG_B:
+        case REG_C:
+        case REG_D:
+        case REG_E:
+        case REG_H:
+        case REG_L:
+            return true;
+        case REG_AF:
+        case REG_BC:
+        case REG_DE:
+        case REG_HL:
+        case REG_SP:
+        case REG_PC:
+            return false;
+        case NONE:
+            std::cout << "Invalid register." << std::endl;
+            exit(1);
+    }
+    return false;
+}
+
+uint16_t append(uint8_t lo, uint8_t hi) {
+    int returned = 0;
+    returned |= hi;
+    returned <<= 8;
+    returned |= lo;
+    return returned;
+}
