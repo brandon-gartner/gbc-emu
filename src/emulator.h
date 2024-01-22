@@ -8,6 +8,7 @@
 #include "shared.h"
 #include "stack_c.h"
 
+class stack_c;
 class processor;
 class emulator {
    public:
@@ -16,6 +17,7 @@ class emulator {
         paused,
         stopped
     };
+    status main_mode;
     cartridge *cart;
     processor *cpu;
     databus *bus;

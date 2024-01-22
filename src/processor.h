@@ -48,11 +48,15 @@ class processor {
     void execute();
 
     void set_pc(uint16_t);
+    void set_reg_8(register_type, uint8_t);
+    void set_reg_16(register_type, uint16_t);
 
     uint16_t fetch_result;
     uint16_t destination_address;
     bool destination_is_memory;
+    bool enable_interrupts_next = false;
     bool interrupt_enabled = true;
+    bool interrupt_flags = false;
     uint8_t opcode;
     instruction* current;
     uint8_t reg_a;
@@ -66,8 +70,6 @@ class processor {
     uint16_t reg_sp;
 
    private:
-    void set_reg_8(register_type, uint8_t);
-    void set_reg_16(register_type, uint16_t);
 };
 
 #endif

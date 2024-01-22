@@ -15,9 +15,23 @@ int processor::step() {
         fetch_decode();
         // execute
         execute();
-        return 0;
+    } else {
+        emu->add_cycles(1);
+        if (interrupt_flags) {
+            processor_status = running;
+        }
     }
-    return 1;
+
+    if (interrupt_enabled) {
+        enable_interrupts_next = false;
+    }
+
+    // takes a cycle to re-enable cpu
+    if (enable_interrupts_next) {
+        interrupt_enabled = true;
+    }
+
+    return 0;
 }
 
 void processor::fetch_decode() {

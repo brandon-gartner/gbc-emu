@@ -1,5 +1,5 @@
-#ifndef STACK_H
-#define STACK_H
+#ifndef STACK_C_H
+#define STACK_C_H
 
 #include "emulator.h"
 #include "shared.h"

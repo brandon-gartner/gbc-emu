@@ -1,13 +1,13 @@
 #include "stack_c.h"
 
 void stack_c::stack_push8(uint8_t value) {
-    emu->bus->write8(emu->cpu->get_sp(), value);
-    emu->cpu->set_sp(emu->cpu->get_sp() - 1);
+    emu->bus->write8(emu->cpu->get_reg(REG_SP), value);
+    emu->cpu->set_reg(REG_SP, true, emu->cpu->get_reg(REG_SP) - 1);
 }
 
 uint8_t stack_c::stack_pop8() {
-    uint8_t retrieved = emu->bus->read8(emu->cpu->get_sp());
-    emu->cpu->set_sp(emu->cpu->get_sp() + 1);
+    uint8_t retrieved = emu->bus->read8(emu->cpu->get_reg(REG_SP));
+    emu->cpu->set_reg(REG_SP, true, emu->cpu->get_reg(REG_SP) + 1);
     return retrieved;
 }
 
