@@ -1,8 +1,10 @@
 #include "stack_c.h"
 
+stack_c::stack_c(emulator* emu) : emu(emu) {}
+
 void stack_c::stack_push8(uint8_t value) {
-    emu->bus->write8(emu->cpu->get_reg(REG_SP), value);
     emu->cpu->set_reg(REG_SP, true, emu->cpu->get_reg(REG_SP) - 1);
+    emu->bus->write8(emu->cpu->get_reg(REG_SP), value);
 }
 
 uint8_t stack_c::stack_pop8() {

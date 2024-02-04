@@ -76,6 +76,8 @@ class instruction {
     void sra(int);
     void swap(int);
     void srl(int);
+    uint8_t get_cb_val(int mod);
+    void set_cb_val(int mod, uint8_t val);
 
     processor* cpu;
     uint8_t opcode;

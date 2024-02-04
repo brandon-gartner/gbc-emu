@@ -19,8 +19,7 @@ uint8_t databus::read8(uint16_t address) {
         return emu->cart->read_cart(address);
     } else if (address < 0xE000) {
         // reading from ram banks/wram
-        std::cout << "Reading from ram banks/wram." << std::endl;
-        NOT_IMPLEMENTED();
+        return emu->mem->wram_read(address);
     } else if (address < 0xFE00) {
         // reading from echo ram
         std::cout << "Reading from echo ram." << std::endl;
@@ -41,6 +40,7 @@ void databus::write8(uint16_t address, uint8_t value) {
         // writing to rom bank 1 or 2, can just write to cart
         std::cout << "writing value " << std::to_string(value) << std::endl;
         emu->cart->write_cart(value, address);
+        return;
     } else if (address < 0xA000) {
         std::cout << "Do not currently support character/map data." << std::endl;
         NOT_IMPLEMENTED()
@@ -48,10 +48,11 @@ void databus::write8(uint16_t address, uint8_t value) {
         // writing to vram/cart ram
         // this is on the cartridge like before, can just write to cart
         emu->cart->write_cart(value, address);
+        return;
     } else if (address < 0xE000) {
         // writing to ram banks/wram
-        std::cout << "Writing to ram banks/wram." << std::endl;
-        NOT_IMPLEMENTED();
+        emu->mem->wram_write(address, value);
+        return;
     } else if (address < 0xFE00) {
         // writing to echo ram
         std::cout << "Writing to echo ram." << std::endl;
@@ -63,6 +64,7 @@ void databus::write8(uint16_t address, uint8_t value) {
     } else if (address == 0xFFFF) {
         // writing to interrupt enable register
         emu->mem->set_interrupt(value);
+        return;
     }
     emu->mem->hram_write(address, value);
 }

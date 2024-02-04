@@ -114,9 +114,9 @@ bool cartridge::verify_header_checksum(bool debug) {
     return true;
 }
 
-cartridge::cartridge(char** argv) {
-    this->load_cartridge(argv);
-}
+// cartridge::cartridge(char** argv) {
+//     this->load_cartridge(argv);
+// }
 
 cartridge::cartridge() {
 }

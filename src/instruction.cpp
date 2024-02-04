@@ -109,25 +109,16 @@ int instruction::execute() {
 
 // TODO: make sure that double setting the reg wont matter, it shouldnt, but...
 void instruction::inc() {
-    if (reg_is_8bit(reg_1)) {
-        cpu->set_reg(this->reg_1, false, cpu->get_reg(this->reg_1) + 1);
-    } else {
-        cpu->set_reg(this->reg_1, true, cpu->get_reg(this->reg_1) + 1);
-        cpu->emu->add_cycles(1);
-    }
-
     uint16_t result = 0;
-    // special case
+
+    // special case of HL
     if (mode == MEMREG && reg_1 == REG_HL) {
         result = ((cpu->emu->bus->read8(cpu->get_reg(REG_HL)) + 1) & 0xFF);
-        cpu->emu->bus->write8(REG_HL, result);
+        cpu->emu->bus->write8(cpu->get_reg(REG_HL), result);
     } else {
-        // TODO: this will break.  absolutely.  figure out a way to set_reg where you don't need to know at compile-time.
-        result = cpu->get_reg(this->reg_1) + 1;  // this line might be kind of funny.  test it.
-        // cpu->set_reg(reg_1, false, cpu->get_reg(this->reg_1) + 1);
-        cpu->set_reg(reg_1, !reg_is_8bit(reg_1), cpu->get_reg(this->reg_1) + 1);
+        result = cpu->get_reg(this->reg_1) + 1;
+        cpu->set_reg(reg_1, !reg_is_8bit(reg_1), result);
     }
-    // cpu->set_reg(this->reg_1, cpu->get_reg(this->reg_1) + 1);
 
     // don't want to override flags for certain cases of inc
     if ((opcode & 0x03) == 0x03) {
@@ -137,40 +128,39 @@ void instruction::inc() {
     cpu->set_flag_z(result == 0);
     cpu->set_flag_n(0);
     cpu->set_flag_h((result & 0x0F) == 0x00);
-    cpu->set_flag_c(0);  // TODO: test if this is 0 or -1
 }
 
 // TODO: make sure that double setting the reg wont matter, it shouldnt, but...
 void instruction::dec() {
-    if (reg_is_8bit(reg_1)) {
-        cpu->set_reg(this->reg_1, false, cpu->get_reg(this->reg_1) - 1);
-    } else {
-        cpu->set_reg(this->reg_1, true, cpu->get_reg(this->reg_1) - 1);
-        cpu->emu->add_cycles(1);
-    }
-
     uint16_t result = 0;
-    // special case
-    if (mode == MEMREG && reg_1 == REG_HL) {
-        result = ((cpu->emu->bus->read8(cpu->get_reg(REG_HL)) - 1) & 0xFF);
-        cpu->emu->bus->write8(REG_HL, result);
-    } else {
-        // TODO: this will break.  absolutely.  figure out a way to set_reg where you don't need to know at compile-time.
-        result = cpu->get_reg(this->reg_1) - 1;  // this line might be kind of funny.  test it.
-        // cpu->set_reg(reg_1, false, cpu->get_reg(this->reg_1) + 1);
-        cpu->set_reg(reg_1, !reg_is_8bit(reg_1), cpu->get_reg(this->reg_1) - 1);
-    }
-    // cpu->set_reg(this->reg_1, cpu->get_reg(this->reg_1) + 1);
 
-    // don't want to override flags for certain cases of inc
-    if ((opcode & 0x0B) == 0x0B) {
+    if (mode == MEMREG && reg_1 == REG_HL) {
+        uint8_t old_value = cpu->emu->bus->read8(cpu->get_reg(REG_HL));
+
+        uint8_t new_value = old_value - 1;
+        cpu->emu->bus->write8(cpu->get_reg(REG_HL), new_value);
+
+        result = new_value;
+
+        cpu->set_flag_z(new_value == 0);
+        cpu->set_flag_n(true);
+        cpu->set_flag_h((old_value & 0x0F) == 0x00);
+        return;
+    }
+
+    uint16_t old_value = cpu->get_reg(this->reg_1);
+    result = old_value - 1;
+
+    cpu->set_reg(reg_1, !reg_is_8bit(reg_1), result);
+
+    // 16-bit dec does not modify flags
+    if (!reg_is_8bit(reg_1)) {
         return;
     }
 
     cpu->set_flag_z(result == 0);
     cpu->set_flag_n(1);
     cpu->set_flag_h((result & 0x0F) == 0x0F);
-    cpu->set_flag_c(0);  // TODO: test if this is 0 or -1
 }
 
 void instruction::add() {
@@ -235,9 +225,11 @@ void instruction::sub() {
     // need not be 32, no overflow
     uint16_t result = cpu->get_reg(reg_1) - cpu->fetch_result;
 
+    uint16_t reg_1_val = cpu->get_reg(reg_1);
+
     int z_flag = (result == 0);
-    int h_flag = ((int)reg_1 & 0xF) - ((int)cpu->fetch_result & 0xF) < 0;
-    int c_flag = (((int)reg_1 < 0) - ((int)cpu->fetch_result)) < 0;
+    int h_flag = (reg_1_val & 0xF) - ((int)cpu->fetch_result & 0xF) < 0;
+    int c_flag = reg_1_val < cpu->fetch_result;
 
     cpu->set_reg(reg_1, !reg_is_8bit(reg_1), result);
     cpu->set_flag_z(z_flag);
@@ -250,8 +242,10 @@ void instruction::sbc() {
     int carry = cpu->get_flag_c();
     uint8_t sub_amount = cpu->fetch_result + cpu->get_flag_c();
 
+    uint16_t reg_1_val = cpu->get_reg(reg_1);
+
     int z_flag = cpu->get_reg(reg_1) - sub_amount == 0;
-    int h_flag = ((int)reg_1 & 0xF) - ((int)sub_amount & 0xF) - carry < 0;
+    int h_flag = (reg_1_val & 0xF) - ((int)sub_amount & 0xF) - carry < 0;
     int c_flag = ((int)cpu->get_reg(reg_1) - (int)sub_amount) < 0;  // may need carry here brain is tired
 
     cpu->set_flag_z(z_flag);
@@ -282,8 +276,8 @@ void instruction::ld() {
         return;
     }
 
-    // TODO: verify that this is correct, should be?
-    cpu->set_reg(cpu->current->reg_1, false, cpu->fetch_result);
+    // determine 8-bit vs 16-bit register destination
+    cpu->set_reg(cpu->current->reg_1, !reg_is_8bit(cpu->current->reg_1), cpu->fetch_result);
 }
 
 void instruction::ldh() {
@@ -344,7 +338,7 @@ void instruction::jp() {
 // jump relative
 void instruction::jr() {
     if (check_conditions()) {
-        cpu->set_pc(cpu->reg_pc + ((char)(cpu->fetch_result) % 0xFF));
+        cpu->set_pc(cpu->reg_pc + (int8_t)cpu->fetch_result);
         // cpu->set_pc(cpu->reg_pc + ((uint8_t)(cpu->fetch_result) % 0xFF));
         cpu->emu->add_cycles(1);
     }
@@ -534,7 +528,7 @@ void instruction::cp() {
 
     int z_flag = (result == 0);
     int h_flag = ((int)cpu->get_reg(REG_A) & 0xF) - ((int)cpu->fetch_result & 0xF) < 0;
-    int c_flag = ((int)result < 0);
+    int c_flag = cpu->get_reg(REG_A) < cpu->fetch_result;
 
     cpu->set_flag_z(z_flag);
     cpu->set_flag_n(1);
@@ -1005,169 +999,147 @@ void instruction::cb() {
     exit(1);
 }
 
-// if im miscalculating 1 << num, its supposed to be (whatever the better form is) everywhere
+// read cb value from register or memory at HL
+uint8_t instruction::get_cb_val(int mod) {
+    if (mod == 6) {
+        return cpu->emu->bus->read8(cpu->get_reg(REG_HL));
+    }
+    return cpu->get_reg(cb_registers.at(mod));
+}
+
+// write cb value to register or memory at HL
+void instruction::set_cb_val(int mod, uint8_t val) {
+    if (mod == 6) {
+        cpu->emu->bus->write8(cpu->get_reg(REG_HL), val);
+    } else {
+        cpu->set_reg(cb_registers.at(mod), false, val);
+    }
+}
+
 void instruction::bit(int num, int mod) {
-    uint8_t result = cpu->get_reg(cb_registers.at(mod));
-    int z_flag = !(result & (1 << num));  // TODO: test
-    int n_flag = 0;
-    int h_flag = 1;
-    int c_flag = -1;
+    uint8_t result = get_cb_val(mod);
+    bool z_flag = !(result & (1 << num));
 
     cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(1);
+    // carry flag is preserved in bit
 }
 
 void instruction::res(int num, int mod) {
-    uint8_t result = cpu->get_reg(cb_registers.at(mod));
+    uint8_t result = get_cb_val(mod);
     result &= ~(1 << num);
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    set_cb_val(mod, result);
 }
 
 void instruction::set(int num, int mod) {
-    uint8_t result = cpu->get_reg(cb_registers.at(mod));
+    uint8_t result = get_cb_val(mod);
     result |= (1 << num);
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    set_cb_val(mod, result);
 }
 
 void instruction::rlc(int mod) {
-    uint8_t result = cpu->get_reg(cb_registers.at(mod));
-    uint8_t shift_res = (result << 1) & 0xFF;
-    bool c_flag = false;
-    if ((result & (1 << 7)) != 0) {
-        c_flag = true;
-        shift_res |= 1;
-    }
+    uint8_t original = get_cb_val(mod);
+    bool c_flag = (original >> 7) & 1;
+    uint8_t result = (original << 1) | c_flag;
 
-    cpu->set_reg(cb_registers.at(mod), false, shift_res);
+    set_cb_val(mod, result);
 
-    bool z_flag = shift_res == 0;
-    bool n_flag = 0;
-    bool h_flag = 0;
-
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
     cpu->set_flag_c(c_flag);
 }
 
 void instruction::rrc(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
-    uint8_t result = original;
-    result >>= 1;
-    result |= (original << 7);
+    uint8_t original = get_cb_val(mod);
+    bool c_flag = original & 1;
+    uint8_t result = (original >> 1) | (c_flag << 7);
 
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    set_cb_val(mod, result);
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = original & 0x1;
-
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
     cpu->set_flag_c(c_flag);
 }
 
 void instruction::rl(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
-    uint8_t result = original;
-    result <<= 1;
-    result |= cpu->get_flag_c();
+    uint8_t original = get_cb_val(mod);
+    bool old_c = cpu->get_flag_c();
+    bool new_c = (original >> 7) & 1;
+    uint8_t result = (original << 1) | old_c;
 
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    set_cb_val(mod, result);
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = (original & 0x80);  // may need explicit conversion to c++ bool
-
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
+    cpu->set_flag_c(new_c);
 }
 
 void instruction::rr(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
-    uint8_t result = original;
-    result >>= 1;
-    result |= (cpu->get_flag_c() << 7);
+    uint8_t original = get_cb_val(mod);
+    bool old_c = cpu->get_flag_c();
+    bool new_c = original & 1;
+    uint8_t result = (original >> 1) | (old_c << 7);
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = original & 0x1;
+    set_cb_val(mod, result);
 
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
+    cpu->set_flag_c(new_c);
 }
 
 void instruction::sla(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
-    uint8_t result = (uint8_t)original << 1;
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    uint8_t original = get_cb_val(mod);
+    bool c_flag = (original >> 7) & 1;
+    uint8_t result = (original << 1) & 0xFF;
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = original & 0x1;
+    set_cb_val(mod, result);
 
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
     cpu->set_flag_c(c_flag);
 }
 
 void instruction::sra(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
-    uint8_t result = (uint8_t)original >> 1;
-    cpu->set_reg(cb_registers.at(mod), false, result);
+    uint8_t original = get_cb_val(mod);
+    bool c_flag = original & 1;
+    uint8_t result = (original >> 1) | (original & 0x80);
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = original & 0x80;  // may need explicit conversion to c++ bool
+    set_cb_val(mod, result);
 
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
     cpu->set_flag_c(c_flag);
 }
 
 void instruction::swap(int mod) {
-    uint8_t value = cpu->get_reg(cb_registers.at(mod));
+    uint8_t value = get_cb_val(mod);
     value = ((value & 0xF0) >> 4) | ((value & 0x0F) << 4);
-    cpu->set_reg(cb_registers.at(mod), false, value);
 
-    bool z_flag = (value == 0);
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = 0;
+    set_cb_val(mod, value);
 
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_flag_z(value == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
+    cpu->set_flag_c(0);
 }
 
 void instruction::srl(int mod) {
-    uint8_t original = cpu->get_reg(cb_registers.at(mod));
+    uint8_t original = get_cb_val(mod);
+    bool c_flag = original & 1;
     uint8_t result = original >> 1;
-    cpu->set_reg(cb_registers.at(mod), false, result);
 
-    bool z_flag = !result;
-    bool n_flag = 0;
-    bool h_flag = 0;
-    bool c_flag = original & 0x1;
+    set_cb_val(mod, result);
 
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
-    cpu->set_flag_h(h_flag);
+    cpu->set_flag_z(result == 0);
+    cpu->set_flag_n(0);
+    cpu->set_flag_h(0);
     cpu->set_flag_c(c_flag);
 }
 

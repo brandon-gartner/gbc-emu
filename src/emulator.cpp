@@ -3,17 +3,12 @@
 #include "cartridge.h"
 
 emulator::emulator() {
-    this->cpu = new processor(this);
+    this->cart = new cartridge();
     this->bus = new databus(this);
+    this->cpu = new processor(this);
+    this->mem = new ram();
+    this->stack = new stack_c(this);
     this->current = emulator::status::stopped;
-}
-
-emulator::status emulator::get_status() {
-    return this->current;
-}
-
-void emulator::set_status(emulator::status new_status) {
-    this->current = new_status;
 }
 
 int emulator::run(int argc, char **argv) {
@@ -22,7 +17,7 @@ int emulator::run(int argc, char **argv) {
         return 1;
     }
     std::cout << "Loading ROM file: " << argv[1] << std::endl;
-    this->cart = new cartridge(argv);
+    cart->load_cartridge(argv);
     this->cart->print_cartridge_info();
 
     if (!this->cart->valid) {
@@ -41,6 +36,14 @@ int emulator::start() {
     }
 
     return 0;
+}
+
+emulator::status emulator::get_status() {
+    return this->current;
+}
+
+void emulator::set_status(emulator::status new_status) {
+    this->current = new_status;
 }
 
 int emulator::add_cycles(int cycles) {

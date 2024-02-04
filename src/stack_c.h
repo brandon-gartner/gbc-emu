@@ -11,6 +11,7 @@ class stack_c {
     emulator* emu;
 
    public:
+    stack_c(emulator* emu);
     void stack_push8(uint8_t value);
     uint8_t stack_pop8();
     void stack_push16(uint16_t value);

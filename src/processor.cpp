@@ -118,8 +118,11 @@ void processor::decode() {
             fetch_result = emu->bus->read8(get_reg(current->reg_2));
             emu->add_cycles(1);
             set_reg(current->reg_2, true, get_reg(current->reg_2) - 1);
+            return;
 
         case addressing_mode::D8:
+            fetch_result = emu->bus->read8(emu->cpu->reg_pc);
+            emu->cpu->reg_pc++;
             return;
 
         case addressing_mode::D8_REG:
@@ -243,13 +246,13 @@ uint16_t processor::get_reg(register_type reg) {
         case register_type::REG_L:
             return reg_l;
         case register_type::REG_AF:
-            return append(reg_a, reg_f);
+            return (reg_a << 8) | reg_f;
         case register_type::REG_BC:
-            return append(reg_b, reg_c);
+            return (reg_b << 8) | reg_c;
         case register_type::REG_DE:
-            return append(reg_d, reg_e);
+            return (reg_d << 8) | reg_e;
         case register_type::REG_HL:
-            return append(reg_h, reg_l);
+            return (reg_h << 8) | reg_l;
         case register_type::REG_SP:
             return reg_sp;
         case register_type::REG_PC:
@@ -281,21 +284,36 @@ bool processor::get_flag_c() {
     return (reg_f & 0x10) == 0x10;
 }
 
-// TODO: test these better
 void processor::set_flag_z(bool flag) {
-    reg_f |= flag * 0x80;
+    if (flag) {
+        reg_f |= 0x80;
+    } else {
+        reg_f &= ~0x80;
+    }
 }
 
 void processor::set_flag_n(bool flag) {
-    reg_f |= flag * 0x40;
+    if (flag) {
+        reg_f |= 0x40;
+    } else {
+        reg_f &= ~0x40;
+    }
 }
 
 void processor::set_flag_h(bool flag) {
-    reg_f |= flag * 0x20;
+    if (flag) {
+        reg_f |= 0x20;
+    } else {
+        reg_f &= ~0x20;
+    }
 }
 
 void processor::set_flag_c(bool flag) {
-    reg_f |= flag * 0x10;
+    if (flag) {
+        reg_f |= 0x10;
+    } else {
+        reg_f &= ~0x10;
+    }
 }
 
 void processor::set_reg_8(register_type type, uint8_t new_val) {

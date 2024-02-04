@@ -34,7 +34,6 @@ class cartridge {
 
    public:
     cartridge();
-    cartridge(char **argv);
     bool load_cartridge(char **argv);
     void print_cartridge_info();
     void print_header_hex();

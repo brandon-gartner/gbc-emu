@@ -5,7 +5,7 @@ uint8_t ram::wram_read(uint16_t address) {
         std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
         exit(1);
     }
-    return wram[address - 0xE000];
+    return wram[address - 0xC000];
 }
 
 void ram::wram_write(uint16_t address, uint8_t value) {
@@ -13,7 +13,7 @@ void ram::wram_write(uint16_t address, uint8_t value) {
         std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
         exit(1);
     }
-    wram[address - 0xE000] = value;
+    wram[address - 0xC000] = value;
 }
 
 uint8_t ram::hram_read(uint16_t address) {
