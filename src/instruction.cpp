@@ -29,7 +29,8 @@ int instruction::execute() {
         case RRCA:
             rrca();
             break;
-        // case STOP:
+        case STOP:
+            break;
         case RLA:
             rla();
             return 0;
@@ -263,7 +264,16 @@ void instruction::di() {
 
 void instruction::ld() {
     if (cpu->current->mode == addressing_mode::HL_SPTR) {
-        NOT_IMPLEMENTED();
+        // ld hl, sp+e8
+        uint16_t sp = cpu->get_reg(REG_SP);
+        uint8_t offset_u8 = (uint8_t)cpu->fetch_result;
+        int8_t offset_s8 = (int8_t)offset_u8;
+        cpu->set_reg(REG_HL, true, sp + offset_s8);
+        cpu->set_flag_z(0);
+        cpu->set_flag_n(0);
+        cpu->set_flag_h(((sp & 0x0F) + (offset_u8 & 0x0F)) > 0x0F);
+        cpu->set_flag_c(((sp & 0xFF) + (offset_u8 & 0xFF)) > 0xFF);
+        cpu->emu->add_cycles(1);
         return;
     }
     if (cpu->destination_is_memory) {
@@ -440,59 +450,50 @@ void instruction::rra() {
     cpu->set_flag_c(new_c_flag);
 }
 
-// pretty much how gambatte does it.  i can't understand this one.
+// decimal adjust accumulator
 void instruction::daa() {
-    uint8_t num = 0;
-    bool carry = false;
+    uint8_t a = cpu->get_reg(REG_A);
+    bool n = cpu->get_flag_n();
+    bool c = cpu->get_flag_c();
+    bool h = cpu->get_flag_h();
 
-    bool n_flag = cpu->get_flag_n();
-    bool h_flag = cpu->get_flag_h();
-    bool c_flag = cpu->get_flag_c();
-
-    if (h_flag || (!n_flag && (cpu->get_reg(REG_A) & 0xF) > 9)) {
-        num = 6;
-    }
-
-    if (c_flag || !(n_flag && cpu->get_reg(REG_A) > 0x99)) {
-        num |= 0x60;
-        carry = true;
-    }
-
-    uint8_t a_value = cpu->get_reg(REG_A);
-    if (n_flag) {
-        a_value -= num;
+    if (!n) {
+        if (c || a > 0x99) {
+            a += 0x60;
+            c = true;
+        }
+        if (h || (a & 0x0F) > 0x09) {
+            a += 0x06;
+        }
     } else {
-        a_value += num;
+        if (c) {
+            a -= 0x60;
+        }
+        if (h) {
+            a -= 0x06;
+        }
     }
 
-    bool z_flag = (a_value == 0);
-    cpu->set_reg(REG_A, false, a_value);
-    n_flag = -1;
-    h_flag = 0;
-
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(n_flag);
+    cpu->set_reg(REG_A, false, a);
+    cpu->set_flag_z(a == 0);
     cpu->set_flag_h(0);
-    cpu->set_flag_c(carry);
+    cpu->set_flag_c(c);
+    // n flag is preserved
 }
 
 void instruction::cpl() {
-    cpu->set_reg(REG_A, false, -cpu->get_reg(REG_A));
-    cpu->set_flag_z(-1);
+    cpu->set_reg(REG_A, false, ~cpu->get_reg(REG_A));
     cpu->set_flag_n(1);
     cpu->set_flag_h(1);
-    cpu->set_flag_c(-1);
 }
 
 void instruction::scf() {
-    cpu->set_flag_z(-1);
     cpu->set_flag_n(0);
     cpu->set_flag_h(0);
     cpu->set_flag_c(1);
 }
 
 void instruction::ccf() {
-    cpu->set_flag_z(-1);
     cpu->set_flag_n(0);
     cpu->set_flag_h(0);
     cpu->set_flag_c(cpu->get_flag_c() ^ 1);
@@ -586,19 +587,20 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     // load instructions are mostly clones of 0x loads, but BC -> HL, B -> H, C -> L0x20, new instruction{JR, D8, NONE, NONE, NZ}
     {0x20, new instruction{JR, D8, NONE, NONE, NZ}},
     {0x21, new instruction{instruction_type::LD, addressing_mode::REG_D16, register_type::REG_HL}},
-    {0x22, new instruction{instruction_type::LD, addressing_mode::HLMINUS_REG, register_type::REG_HL, register_type::REG_A}},
+    {0x22, new instruction{instruction_type::LD, addressing_mode::HLPLUS_REG, register_type::REG_HL, register_type::REG_A}},
     {0x23, new instruction{INC, REG, REG_HL}},
     {0x24, new instruction{INC, REG, REG_H}},
     {0x25, new instruction{instruction_type::DEC, addressing_mode::REG, register_type::REG_H}},
     {0x26, new instruction{instruction_type::LD, addressing_mode::REG_D8, register_type::REG_H}},
+    {0x27, new instruction{DAA}},
     {0x28, new instruction{JR, D8, NONE, NONE, Z}},
     {0x29, new instruction{instruction_type::ADD, REG_REG, REG_HL, REG_HL}},
     {0x2A, new instruction{instruction_type::LD, addressing_mode::REG_HLPLUS, register_type::REG_A, register_type::REG_HL}},
     {0x2B, new instruction{DEC, REG, REG_HL}},
-    {0x2E, new instruction{instruction_type::LD, addressing_mode::REG_D8, register_type::REG_L}},
     {0x2C, new instruction{INC, REG, REG_L}},
     {0x2D, new instruction{DEC, REG, REG_L}},
     {0x2E, new instruction{instruction_type::LD, addressing_mode::REG_D8, register_type::REG_L}},
+    {0x2F, new instruction{CPL}},
 
     // 0x3
     // load instructions are mostly clones of 0x loads,
@@ -612,6 +614,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0x34, new instruction{INC, MEMREG, REG_HL}},
     {0x35, new instruction{instruction_type::DEC, addressing_mode::MEMREG, register_type::REG_HL}},
     {0x36, new instruction{instruction_type::LD, addressing_mode::MEMREG_D8, register_type::REG_HL}},
+    {0x37, new instruction{SCF}},
     {0x38, new instruction{JR, D8, NONE, NONE, C}},
     {0x39, new instruction{instruction_type::ADD, REG_REG, REG_HL, REG_SP}},
     {0x3A, new instruction{instruction_type::LD, addressing_mode::REG_HLMINUS, register_type::REG_A, register_type::REG_HL}},
@@ -619,6 +622,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0x3C, new instruction{INC, REG, REG_A}},
     {0x3D, new instruction{DEC, REG, REG_A}},
     {0x3E, new instruction{instruction_type::LD, addressing_mode::REG_D8, register_type::REG_A}},
+    {0x3F, new instruction{CCF}},
 
     // 0x4 ✓
     // this, 0x5, 0x6, and 0x7 are all just full of loads, nothing else at all.
@@ -679,14 +683,14 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
 
     // 0x7 ✓
     // follows a similar pattern to 0x4, except with A instead of B and HL instead of C
-    {0x70, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_B}},
-    {0x71, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_C}},
-    {0x72, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_D}},
-    {0x73, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_E}},
-    {0x74, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_H}},
-    {0x75, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_L}},
+    {0x70, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_B}},
+    {0x71, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_C}},
+    {0x72, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_D}},
+    {0x73, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_E}},
+    {0x74, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_H}},
+    {0x75, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_L}},
     {0x76, new instruction{instruction_type::HALT}},
-    {0x77, new instruction{instruction_type::LD, addressing_mode::REG_MEMREG, register_type::REG_HL, register_type::REG_A}},
+    {0x77, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_HL, register_type::REG_A}},
     {0x78, new instruction{instruction_type::LD, addressing_mode::REG_REG, register_type::REG_A, register_type::REG_B}},
     {0x79, new instruction{instruction_type::LD, addressing_mode::REG_REG, register_type::REG_A, register_type::REG_C}},
     {0x7A, new instruction{instruction_type::LD, addressing_mode::REG_REG, register_type::REG_A, register_type::REG_D}},
@@ -816,7 +820,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0xE6, new instruction{AND, REG_D8}},
     {0xE7, new instruction{RST, IMPLIED, NONE, NONE, ALWAYS, (uint8_t)0x20}},
     {0xE8, new instruction{ADD, REG_D8, REG_SP}},
-    {0xE9, new instruction{JP, MEMREG, NONE, REG_HL}},
+    {0xE9, new instruction{JP, REG, REG_HL}},
     {0xEA, new instruction{instruction_type::LD, addressing_mode::ADDR16_REG, register_type::NONE, register_type::REG_A}},
     // there is no EB
     // there is no EC
