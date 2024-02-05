@@ -267,11 +267,11 @@ void instruction::ld() {
         return;
     }
     if (cpu->destination_is_memory) {
-        if (reg_is_8bit(cpu->current->reg_2)) {
-            cpu->emu->bus->write8(cpu->destination_address, cpu->fetch_result);
-        } else {
+        if (cpu->current->reg_2 == register_type::REG_SP) {
             cpu->emu->add_cycles(1);
             cpu->emu->bus->write16(cpu->destination_address, cpu->fetch_result);
+        } else {
+            cpu->emu->bus->write8(cpu->destination_address, cpu->fetch_result);
         }
         return;
     }
@@ -282,15 +282,16 @@ void instruction::ld() {
 
 void instruction::ldh() {
     if (cpu->current->reg_1 == register_type::REG_A) {
-        cpu->set_reg(cpu->current->reg_1, false, cpu->fetch_result | 0xFF00);
+        // read from 0xFF00 + a8 into A
+        uint8_t value = cpu->emu->bus->read8(cpu->fetch_result | 0xFF00);
+        cpu->set_reg(cpu->current->reg_1, false, value);
     } else {
-        cpu->emu->bus->write8(cpu->fetch_result | 0xFF00, cpu->get_reg(cpu->current->reg_2));
+        // write A to destination_address (0xFF00 + a8)
+        cpu->emu->bus->write8(cpu->destination_address, cpu->get_reg(cpu->current->reg_2));
     }
 
     cpu->emu->add_cycles(1);
 }
-
-// push and pop are always 16bit values
 
 // make sure no & 0xFF is needed here
 void instruction::push() {

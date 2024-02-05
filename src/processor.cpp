@@ -102,7 +102,7 @@ void processor::decode() {
         }
 
         case addressing_mode::REG_MEMREG: {
-            uint16_t address = get_reg(current->reg_2);
+            uint16_t address = (current->reg_2 == REG_C) ? (0xFF00 | get_reg(current->reg_2)) : get_reg(current->reg_2);
             fetch_result = emu->bus->read8(address);
             emu->add_cycles(1);
             return;
@@ -189,7 +189,7 @@ void processor::decode() {
         case addressing_mode::MEMREG_REG:
             destination_is_memory = true;
             fetch_result = get_reg(current->reg_2);
-            destination_address = get_reg(current->reg_1);
+            destination_address = (current->reg_1 == REG_C) ? (0xFF00 | get_reg(current->reg_1)) : get_reg(current->reg_1);
             return;
 
         case addressing_mode::HLPLUS_REG:

@@ -99,6 +99,8 @@ std::string print_instruction_type(instruction_type type) {
             return "NOP";
         case LD:
             return "LD";
+        case LDH:
+            return "LDH";
         case DI:
             return "DI";
         case INC:

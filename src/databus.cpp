@@ -28,6 +28,12 @@ uint8_t databus::read8(uint16_t address) {
         // reading from oam
         std::cout << "Reading from oam." << std::endl;
         NOT_IMPLEMENTED();
+    } else if (address < 0xFF00) {
+        // unused memory (0xFEA0 - 0xFEFF)
+        return 0xFF;
+    } else if (address < 0xFF80) {
+        // reading from io registers
+        return io_read(address);
     } else if (address == 0xFFFF) {
         // reading from interrupt enable register
         return emu->mem->get_interrupt();
@@ -61,12 +67,47 @@ void databus::write8(uint16_t address, uint8_t value) {
         // writing to oam
         std::cout << "Writing to oam." << std::endl;
         NOT_IMPLEMENTED();
+    } else if (address < 0xFF00) {
+        // unused memory (0xFEA0 - 0xFEFF)
+        return;
+    } else if (address < 0xFF80) {
+        // writing to io registers
+        io_write(address, value);
+        return;
     } else if (address == 0xFFFF) {
         // writing to interrupt enable register
         emu->mem->set_interrupt(value);
         return;
     }
     emu->mem->hram_write(address, value);
+}
+
+uint8_t databus::io_read(uint16_t address) {
+    // joypad (P1/JOYP) - return 0xFF (no buttons pressed)
+    if (address == 0xFF00) {
+        return 0xFF;
+    }
+    // lcd y-coordinate (LY)
+    if (address == 0xFF44) {
+        // cycle through scanlines 0..153 so vblank loops proceed
+        static uint8_t scanline = 0;
+        scanline = (scanline + 1) % 154;
+        return scanline;
+    }
+    return io[address - 0xFF00];
+}
+
+void databus::io_write(uint16_t address, uint8_t value) {
+    // writing to DIV resets it to 0
+    if (address == 0xFF04) {
+        io[0x04] = 0;
+        return;
+    }
+    // serial transfer for test rom output
+    if (address == 0xFF02 && value == 0x81) {
+        std::cout << (char)io[0x01] << std::flush;
+    }
+    io[address - 0xFF00] = value;
 }
 
 uint16_t databus::read16(uint16_t address) {
