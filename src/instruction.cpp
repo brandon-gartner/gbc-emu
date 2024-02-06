@@ -255,11 +255,12 @@ void instruction::sbc() {
     cpu->set_flag_c(c_flag);
 }
 void instruction::ei() {
-    cpu->enable_interrupts_next = true;
+    cpu->ei_delay = 2;
 }
 
 void instruction::di() {
     cpu->interrupt_enabled = false;
+    cpu->ei_delay = 0;
 }
 
 void instruction::ld() {

@@ -1,5 +1,7 @@
 #include "interrupt.h"
 
+interrupt::interrupt(processor* cpu) : cpu(cpu) {}
+
 uint16_t interrupt::get_interrupt_address(interrupt_type type) {
     switch (type) {
         case vblank:
@@ -23,7 +25,7 @@ void interrupt::handle_interrupt(uint16_t address) {
 }
 
 bool interrupt::check_interrupt(interrupt_type type) {
-    if ((cpu->interrupt_flags & type) && (cpu->emu->mem->get_interrupt() & type)) {
+    if (cpu->interrupt_enabled && (cpu->interrupt_flags & type) && (cpu->emu->mem->get_interrupt() & type)) {
         handle_interrupt(get_interrupt_address(type));
         cpu->interrupt_flags &= ~(type);
         cpu->emu->set_status(cpu->emu->main_mode);
@@ -35,6 +37,10 @@ bool interrupt::check_interrupt(interrupt_type type) {
 }
 
 void interrupt::handle_interrupts() {
+    if (!cpu->interrupt_enabled) {
+        return;
+    }
+
     if (check_interrupt(vblank)) {
         return;
     } else if (check_interrupt(lcd)) {
@@ -48,4 +54,6 @@ void interrupt::handle_interrupts() {
     }
 }
 
-// void request_interrupt
+void interrupt::request_interrupt(interrupt_type type) {
+    cpu->interrupt_flags |= type;
+}

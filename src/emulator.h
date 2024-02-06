@@ -10,6 +10,7 @@
 
 class stack_c;
 class processor;
+class interrupt;
 class emulator {
    public:
     enum status {
@@ -23,6 +24,7 @@ class emulator {
     databus *bus;
     ram *mem;
     stack_c *stack;
+    interrupt *intr;
     emulator();
     int run(int argc, char **argv);
     int start();

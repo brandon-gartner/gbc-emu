@@ -8,14 +8,15 @@
 class interrupt {
    public:
     enum interrupt_type {
-        joypad = 0x10000,
-        serial = 0x1000,
-        timer = 0x100,
-        lcd = 0x10,
-        vblank = 0x1,
+        joypad = 0x10,
+        serial = 0x08,
+        timer = 0x04,
+        lcd = 0x02,
+        vblank = 0x01,
     };
 
-    void request_interrupt();
+    interrupt(processor* cpu);
+    void request_interrupt(interrupt_type type);
     void handle_interrupts();
 
    private:

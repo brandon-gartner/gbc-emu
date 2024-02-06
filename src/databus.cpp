@@ -87,6 +87,10 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF00) {
         return 0xFF;
     }
+    // interrupt flag (IF)
+    if (address == 0xFF0F) {
+        return emu->cpu->interrupt_flags | 0xE0;
+    }
     // lcd y-coordinate (LY)
     if (address == 0xFF44) {
         // cycle through scanlines 0..153 so vblank loops proceed
@@ -98,6 +102,11 @@ uint8_t databus::io_read(uint16_t address) {
 }
 
 void databus::io_write(uint16_t address, uint8_t value) {
+    // interrupt flag (IF)
+    if (address == 0xFF0F) {
+        emu->cpu->interrupt_flags = value;
+        return;
+    }
     // writing to DIV resets it to 0
     if (address == 0xFF04) {
         io[0x04] = 0;

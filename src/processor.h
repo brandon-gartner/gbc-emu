@@ -11,6 +11,7 @@
 
 class emulator;
 class instruction;
+class interrupt;
 class processor {
    public:
     enum {
@@ -54,9 +55,10 @@ class processor {
     uint16_t fetch_result;
     uint16_t destination_address;
     bool destination_is_memory;
-    bool enable_interrupts_next = false;
+    int ei_delay = 0;
     bool interrupt_enabled = true;
-    bool interrupt_flags = false;
+    uint8_t interrupt_flags = 0;
+    interrupt* intr = nullptr;
     uint8_t opcode;
     instruction* current;
     uint8_t reg_a;

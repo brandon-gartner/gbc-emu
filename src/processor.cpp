@@ -1,6 +1,7 @@
 #include "processor.h"
 
 #include "instruction.h"
+#include "interrupt.h"
 
 processor::processor(emulator *emu) : emu(emu), reg_pc(0), fetch_result(0), destination_address(0), destination_is_memory(false), opcode(0), current(nullptr), reg_a(0), reg_f(0), reg_b(0), reg_c(0), reg_d(0), reg_e(0), reg_h(0), reg_l(0), reg_sp(0) {
     processor_status = running;
@@ -10,6 +11,10 @@ processor::processor(emulator *emu) : emu(emu), reg_pc(0), fetch_result(0), dest
 }
 
 int processor::step() {
+    if (intr) {
+        intr->handle_interrupts();
+    }
+
     if (processor_status == running || processor_status == stepping) {
         // fetch/decode
         fetch_decode();
@@ -22,13 +27,12 @@ int processor::step() {
         }
     }
 
-    if (interrupt_enabled) {
-        enable_interrupts_next = false;
-    }
-
-    // takes a cycle to re-enable cpu
-    if (enable_interrupts_next) {
-        interrupt_enabled = true;
+    // ei delay: interrupts are enabled after the instruction following ei
+    if (ei_delay > 0) {
+        ei_delay--;
+        if (ei_delay == 0) {
+            interrupt_enabled = true;
+        }
     }
 
     return 0;

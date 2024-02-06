@@ -1,6 +1,7 @@
 #include "emulator.h"
 
 #include "cartridge.h"
+#include "interrupt.h"
 
 emulator::emulator() {
     this->cart = new cartridge();
@@ -8,6 +9,8 @@ emulator::emulator() {
     this->cpu = new processor(this);
     this->mem = new ram();
     this->stack = new stack_c(this);
+    this->intr = new interrupt(this->cpu);
+    this->cpu->intr = this->intr;
     this->current = emulator::status::stopped;
 }
 
