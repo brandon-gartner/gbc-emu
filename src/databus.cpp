@@ -1,6 +1,7 @@
 #include "databus.h"
 
 #include "emulator.h"
+#include "timer.h"
 
 databus::databus(emulator* emu) : emu(emu) {}
 
@@ -87,6 +88,10 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF00) {
         return 0xFF;
     }
+    // timer registers (0xFF04 - 0xFF07)
+    if (address >= 0xFF04 && address <= 0xFF07) {
+        return emu->tmr->read(address);
+    }
     // interrupt flag (IF)
     if (address == 0xFF0F) {
         return emu->cpu->interrupt_flags | 0xE0;
@@ -102,14 +107,14 @@ uint8_t databus::io_read(uint16_t address) {
 }
 
 void databus::io_write(uint16_t address, uint8_t value) {
+    // timer registers (0xFF04 - 0xFF07)
+    if (address >= 0xFF04 && address <= 0xFF07) {
+        emu->tmr->write(address, value);
+        return;
+    }
     // interrupt flag (IF)
     if (address == 0xFF0F) {
         emu->cpu->interrupt_flags = value;
-        return;
-    }
-    // writing to DIV resets it to 0
-    if (address == 0xFF04) {
-        io[0x04] = 0;
         return;
     }
     // serial transfer for test rom output

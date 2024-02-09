@@ -2,6 +2,7 @@
 
 #include "cartridge.h"
 #include "interrupt.h"
+#include "timer.h"
 
 emulator::emulator() {
     this->cart = new cartridge();
@@ -11,6 +12,7 @@ emulator::emulator() {
     this->stack = new stack_c(this);
     this->intr = new interrupt(this->cpu);
     this->cpu->intr = this->intr;
+    this->tmr = new timer(this);
     this->current = emulator::status::stopped;
 }
 
@@ -50,8 +52,9 @@ void emulator::set_status(emulator::status new_status) {
 }
 
 int emulator::add_cycles(int cycles) {
-    // NOT_IMPLEMENTED();
-    int temp_var = cycles;
+    if (this->tmr) {
+        this->tmr->tick(cycles);
+    }
     return 0;
 }
 
