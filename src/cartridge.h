@@ -32,8 +32,18 @@ class cartridge {
     uint8_t header_checksum = 0;
     uint8_t global_checksum;
 
+    // mbc1 banking and ram state
+    uint8_t rom_bank;
+    uint8_t ram_bank;
+    bool ram_enabled;
+    uint8_t banking_mode;
+    uint8_t *ram_data;
+    uint32_t ram_size_bytes;
+    int total_rom_banks;
+
    public:
     cartridge();
+    ~cartridge();
     bool load_cartridge(char **argv);
     void print_cartridge_info();
     void print_header_hex();

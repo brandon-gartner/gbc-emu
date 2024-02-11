@@ -48,6 +48,7 @@ bool cartridge::load_cartridge(char** argv) {
     file.read((char*)&this->rom_size_code, 1);
 
     int bank_number = static_mappings::rom_banks[this->rom_size_code];
+    this->total_rom_banks = (bank_number > 0) ? bank_number : 2;
     // at 64 banks it becomes 1 MB in size, counted in KB until then
     if (bank_number > 32) {
         this->rom_size = std::to_string(bank_number / 64) + " MB, " + std::to_string(bank_number) + " banks";
@@ -57,6 +58,33 @@ bool cartridge::load_cartridge(char** argv) {
 
     file.seekg(0x149);
     file.read((char*)&this->ram_size, 1);
+
+    // allocate cartridge ram if present
+    switch (this->ram_size) {
+        case 0x02:
+            this->ram_size_bytes = 8 * 1024;
+            break;
+        case 0x03:
+            this->ram_size_bytes = 32 * 1024;
+            break;
+        case 0x04:
+            this->ram_size_bytes = 128 * 1024;
+            break;
+        // 0x05 was defined first which is why it's smaller than 0x04, 0x04 came later
+        case 0x05:
+            this->ram_size_bytes = 64 * 1024;
+            break;
+        default:
+            if (this->cartridge_type_code == 0x02 || this->cartridge_type_code == 0x03) {
+                this->ram_size_bytes = 8 * 1024;
+            } else {
+                this->ram_size_bytes = 0;
+            }
+            break;
+    }
+    if (this->ram_size_bytes > 0) {
+        this->ram_data = new uint8_t[this->ram_size_bytes]();
+    }
 
     file.seekg(0x14A);
     file.read((char*)&this->destination_code, 1);
@@ -119,6 +147,25 @@ bool cartridge::verify_header_checksum(bool debug) {
 // }
 
 cartridge::cartridge() {
+    this->file_data = nullptr;
+    this->ram_data = nullptr;
+    this->rom_bank = 1;
+    this->ram_bank = 0;
+    this->ram_enabled = false;
+    this->banking_mode = 0;
+    this->ram_size_bytes = 0;
+    this->total_rom_banks = 2;
+}
+
+cartridge::~cartridge() {
+    if (this->file_data) {
+        delete[] this->file_data;
+        this->file_data = nullptr;
+    }
+    if (this->ram_data) {
+        delete[] this->ram_data;
+        this->ram_data = nullptr;
+    }
 }
 
 void cartridge::print_header_hex() {
@@ -156,12 +203,109 @@ void cartridge::print_beginning_hex() {
 }
 
 uint8_t cartridge::read_cart(uint16_t address) {
-    return this->file_data[address];
+    // rom only cartridge
+    if (this->cartridge_type_code == 0x00) {
+        if (address < this->file_size) {
+            return this->file_data[address];
+        }
+        return 0xFF;
+    }
+
+    // mbc1 cartridge (0x01: mbc1, 0x02: mbc1+ram, 0x03: mbc1+ram+battery)
+    if (this->cartridge_type_code >= 0x01 && this->cartridge_type_code <= 0x03) {
+        // rom bank 00 (0x0000 - 0x3FFF)
+        if (address < 0x4000) {
+            if (this->banking_mode == 1) {
+                int bank = (this->ram_bank << 5) % this->total_rom_banks;
+                uint32_t offset = (bank * 0x4000) + address;
+                if (offset < this->file_size) {
+                    return this->file_data[offset];
+                }
+            }
+            if (address < this->file_size) {
+                return this->file_data[address];
+            }
+            return 0xFF;
+        }
+        // switchable rom bank (0x4000 - 0x7FFF)
+        if (address < 0x8000) {
+            int bank = ((this->ram_bank << 5) | this->rom_bank) % this->total_rom_banks;
+            uint32_t offset = (bank * 0x4000) + (address - 0x4000);
+            if (offset < this->file_size) {
+                return this->file_data[offset];
+            }
+            return 0xFF;
+        }
+        // external ram (0xA000 - 0xBFFF)
+        if (address >= 0xA000 && address < 0xC000) {
+            if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+                return 0xFF;
+            }
+            uint32_t ram_offset = 0;
+            if (this->banking_mode == 0) {
+                ram_offset = (address - 0xA000) % this->ram_size_bytes;
+            } else {
+                ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+            }
+            return this->ram_data[ram_offset];
+        }
+    }
+
+    // fallback for other cartridges
+    if (address < this->file_size) {
+        return this->file_data[address];
+    }
+    return 0xFF;
 }
 
 bool cartridge::write_cart(uint8_t value, uint16_t address) {
-    std::cout << "Cannot write to cartridge." << std::endl;
-    NOT_IMPLEMENTED();
+    // rom only cartridges ignore writes to rom space
+    if (this->cartridge_type_code == 0x00) {
+        return true;
+    }
+
+    // mbc1 cartridge (0x01: mbc1, 0x02: mbc1+ram, 0x03: mbc1+ram+battery)
+    if (this->cartridge_type_code >= 0x01 && this->cartridge_type_code <= 0x03) {
+        // ram enable (0x0000 - 0x1FFF)
+        if (address < 0x2000) {
+            this->ram_enabled = ((value & 0x0F) == 0x0A);
+            return true;
+        }
+        // rom bank number lower 5 bits (0x2000 - 0x3FFF)
+        if (address < 0x4000) {
+            uint8_t bank = value & 0x1F;
+            if (bank == 0) {
+                bank = 1;
+            }
+            this->rom_bank = bank;
+            return true;
+        }
+        // ram bank number or upper 2 bits of rom bank (0x4000 - 0x5FFF)
+        if (address < 0x6000) {
+            this->ram_bank = value & 0x03;
+            return true;
+        }
+        // banking mode select (0x6000 - 0x7FFF)
+        if (address < 0x8000) {
+            this->banking_mode = value & 0x01;
+            return true;
+        }
+        // external ram write (0xA000 - 0xBFFF)
+        if (address >= 0xA000 && address < 0xC000) {
+            if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
+                uint32_t ram_offset = 0;
+                if (this->banking_mode == 0) {
+                    ram_offset = (address - 0xA000) % this->ram_size_bytes;
+                } else {
+                    ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+                }
+                this->ram_data[ram_offset] = value;
+            }
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void cartridge::print_cartridge_info() {
