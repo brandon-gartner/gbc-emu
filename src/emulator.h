@@ -12,6 +12,7 @@ class stack_c;
 class processor;
 class interrupt;
 class timer;
+class ppu;
 class emulator {
    public:
     enum status {
@@ -27,6 +28,7 @@ class emulator {
     stack_c *stack;
     interrupt *intr;
     timer *tmr;
+    ppu *vid;
     emulator();
     int run(int argc, char **argv);
     int start();

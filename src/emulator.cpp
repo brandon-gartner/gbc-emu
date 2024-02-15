@@ -2,6 +2,7 @@
 
 #include "cartridge.h"
 #include "interrupt.h"
+#include "ppu.h"
 #include "timer.h"
 
 emulator::emulator() {
@@ -13,6 +14,7 @@ emulator::emulator() {
     this->intr = new interrupt(this->cpu);
     this->cpu->intr = this->intr;
     this->tmr = new timer(this);
+    this->vid = new ppu(this);
     this->current = emulator::status::stopped;
 }
 
@@ -54,6 +56,9 @@ void emulator::set_status(emulator::status new_status) {
 int emulator::add_cycles(int cycles) {
     if (this->tmr) {
         this->tmr->tick(cycles);
+    }
+    if (this->vid) {
+        this->vid->tick(cycles);
     }
     return 0;
 }

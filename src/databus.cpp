@@ -1,6 +1,7 @@
 #include "databus.h"
 
 #include "emulator.h"
+#include "ppu.h"
 #include "timer.h"
 
 databus::databus(emulator* emu) : emu(emu) {}
@@ -11,24 +12,20 @@ uint8_t databus::read8(uint16_t address) {
         uint8_t value = emu->cart->read_cart(address);
         return value;
     } else if (address < 0xA000) {
-        std::cout << "Address is too large for current accepted cartridges." << std::endl;
-        std::cout << "Do not support map or character data loading yet." << std::endl;
-        NOT_IMPLEMENTED()
+        // reading from vram (0x8000 - 0x9FFF)
+        return emu->vid->read_vram(address - 0x8000);
     } else if (address < 0xC000) {
-        // reading from vram/cart ram
-        // this is on the cartridge like before, can just read from cart
+        // reading from cart ram (0xA000 - 0xBFFF)
         return emu->cart->read_cart(address);
     } else if (address < 0xE000) {
-        // reading from ram banks/wram
+        // reading from ram banks/wram (0xC000 - 0xDFFF)
         return emu->mem->wram_read(address);
     } else if (address < 0xFE00) {
-        // reading from echo ram
-        std::cout << "Reading from echo ram." << std::endl;
-        NOT_IMPLEMENTED();
+        // reading from echo ram (0xE000 - 0xFDFF, mirrors 0xC000 - 0xDDFF)
+        return emu->mem->wram_read(address - 0x2000);
     } else if (address < 0xFEA0) {
-        // reading from oam
-        std::cout << "Reading from oam." << std::endl;
-        NOT_IMPLEMENTED();
+        // reading from oam (0xFE00 - 0xFE9F)
+        return emu->vid->read_oam(address - 0xFE00);
     } else if (address < 0xFF00) {
         // unused memory (0xFEA0 - 0xFEFF)
         return 0xFF;
@@ -48,25 +45,25 @@ void databus::write8(uint16_t address, uint8_t value) {
         emu->cart->write_cart(value, address);
         return;
     } else if (address < 0xA000) {
-        std::cout << "Do not currently support character/map data." << std::endl;
-        NOT_IMPLEMENTED()
+        // writing to vram (0x8000 - 0x9FFF)
+        emu->vid->write_vram(address - 0x8000, value);
+        return;
     } else if (address < 0xC000) {
-        // writing to vram/cart ram
-        // this is on the cartridge like before, can just write to cart
+        // writing to cart ram (0xA000 - 0xBFFF)
         emu->cart->write_cart(value, address);
         return;
     } else if (address < 0xE000) {
-        // writing to ram banks/wram
+        // writing to ram banks/wram (0xC000 - 0xDFFF)
         emu->mem->wram_write(address, value);
         return;
     } else if (address < 0xFE00) {
-        // writing to echo ram
-        std::cout << "Writing to echo ram." << std::endl;
-        NOT_IMPLEMENTED();
+        // writing to echo ram (0xE000 - 0xFDFF, mirrors 0xC000 - 0xDDFF)
+        emu->mem->wram_write(address - 0x2000, value);
+        return;
     } else if (address < 0xFEA0) {
-        // writing to oam
-        std::cout << "Writing to oam." << std::endl;
-        NOT_IMPLEMENTED();
+        // writing to oam (0xFE00 - 0xFE9F)
+        emu->vid->write_oam(address - 0xFE00, value);
+        return;
     } else if (address < 0xFF00) {
         // unused memory (0xFEA0 - 0xFEFF)
         return;
@@ -95,12 +92,9 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF0F) {
         return emu->cpu->interrupt_flags | 0xE0;
     }
-    // lcd y-coordinate (LY)
-    if (address == 0xFF44) {
-        // cycle through scanlines 0..153 so vblank loops proceed
-        static uint8_t scanline = 0;
-        scanline = (scanline + 1) % 154;
-        return scanline;
+    // ppu registers (0xFF40 - 0xFF4B)
+    if (address >= 0xFF40 && address <= 0xFF4B) {
+        return emu->vid->read_reg(address);
     }
     return io[address - 0xFF00];
 }
@@ -114,6 +108,11 @@ void databus::io_write(uint16_t address, uint8_t value) {
     // interrupt flag (IF)
     if (address == 0xFF0F) {
         emu->cpu->interrupt_flags = value;
+        return;
+    }
+    // ppu registers (0xFF40 - 0xFF4B)
+    if (address >= 0xFF40 && address <= 0xFF4B) {
+        emu->vid->write_reg(address, value);
         return;
     }
     // serial transfer for test rom output
