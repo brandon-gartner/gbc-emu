@@ -13,6 +13,7 @@ class processor;
 class interrupt;
 class timer;
 class ppu;
+class joypad;
 class emulator {
    public:
     enum status {
@@ -29,6 +30,7 @@ class emulator {
     interrupt *intr;
     timer *tmr;
     ppu *vid;
+    joypad *pad;
     emulator();
     int run(int argc, char **argv);
     int start();

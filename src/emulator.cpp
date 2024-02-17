@@ -2,6 +2,7 @@
 
 #include "cartridge.h"
 #include "interrupt.h"
+#include "joypad.h"
 #include "ppu.h"
 #include "timer.h"
 
@@ -15,6 +16,7 @@ emulator::emulator() {
     this->cpu->intr = this->intr;
     this->tmr = new timer(this);
     this->vid = new ppu(this);
+    this->pad = new joypad(this);
     this->current = emulator::status::stopped;
 }
 

@@ -1,6 +1,7 @@
 #include "databus.h"
 
 #include "emulator.h"
+#include "joypad.h"
 #include "ppu.h"
 #include "timer.h"
 
@@ -80,9 +81,9 @@ void databus::write8(uint16_t address, uint8_t value) {
 }
 
 uint8_t databus::io_read(uint16_t address) {
-    // joypad (P1/JOYP) - return 0xFF (no buttons pressed)
+    // joypad (P1/JOYP)
     if (address == 0xFF00) {
-        return 0xFF;
+        return emu->pad->read();
     }
     // timer registers (0xFF04 - 0xFF07)
     if (address >= 0xFF04 && address <= 0xFF07) {
@@ -100,6 +101,11 @@ uint8_t databus::io_read(uint16_t address) {
 }
 
 void databus::io_write(uint16_t address, uint8_t value) {
+    // joypad (P1/JOYP)
+    if (address == 0xFF00) {
+        emu->pad->write(value);
+        return;
+    }
     // timer registers (0xFF04 - 0xFF07)
     if (address >= 0xFF04 && address <= 0xFF07) {
         emu->tmr->write(address, value);
