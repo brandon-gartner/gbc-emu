@@ -32,14 +32,20 @@ class cartridge {
     uint8_t header_checksum = 0;
     uint8_t global_checksum;
 
-    // mbc1 banking and ram state
-    uint8_t rom_bank;
+    // mbc banking and ram state
+    uint16_t rom_bank;
     uint8_t ram_bank;
     bool ram_enabled;
     uint8_t banking_mode;
     uint8_t *ram_data;
     uint32_t ram_size_bytes;
     int total_rom_banks;
+
+    // mbc3 real-time clock (rtc) state
+    uint8_t rtc_regs[5];
+    uint8_t rtc_latched[5];
+    uint8_t rtc_latch_prep;
+    bool has_rtc;
 
    public:
     cartridge();
