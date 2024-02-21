@@ -10,3 +10,5 @@ src/*.out
 obj/
 emu
 resources/*.png
+scratch/
+known_bugs/
