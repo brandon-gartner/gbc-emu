@@ -14,6 +14,7 @@ class interrupt;
 class timer;
 class ppu;
 class joypad;
+class display;
 class emulator {
    public:
     enum status {
@@ -31,7 +32,9 @@ class emulator {
     timer *tmr;
     ppu *vid;
     joypad *pad;
+    display *disp;
     emulator();
+    ~emulator();
     int run(int argc, char **argv);
     int start();
     int add_cycles(int cycles);

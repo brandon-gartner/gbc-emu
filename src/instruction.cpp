@@ -6,6 +6,10 @@ int instruction::execute() {
     switch (this->type) {
         case DI:
             di();
+            break;
+        case EI:
+            ei();
+            break;
         case NOP:
             break;
         case LD:
@@ -841,7 +845,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0xF8, new instruction{LD, HL_SPTR, REG_HL, REG_SP}},
     {0xF9, new instruction{LD, REG_REG, REG_SP, REG_HL}},
     {0xFA, new instruction{instruction_type::LD, addressing_mode::REG_ADDR16, register_type::REG_A}},
-    {0xFB, new instruction{EI}},
+    {0xFB, new instruction{EI, IMPLIED}},
     // there is no FC
     // there is no FD
     {0xFE, new instruction{CP, REG_D8}},

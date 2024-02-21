@@ -1,6 +1,7 @@
 #include "emulator.h"
 
 #include "cartridge.h"
+#include "display.h"
 #include "interrupt.h"
 #include "joypad.h"
 #include "ppu.h"
@@ -17,7 +18,22 @@ emulator::emulator() {
     this->tmr = new timer(this);
     this->vid = new ppu(this);
     this->pad = new joypad(this);
+    this->disp = new display();
+    this->main_mode = emulator::status::running;
     this->current = emulator::status::stopped;
+}
+
+emulator::~emulator() {
+    delete this->disp;
+    delete this->pad;
+    delete this->vid;
+    delete this->tmr;
+    delete this->intr;
+    delete this->stack;
+    delete this->mem;
+    delete this->cpu;
+    delete this->bus;
+    delete this->cart;
 }
 
 int emulator::run(int argc, char **argv) {
@@ -40,8 +56,22 @@ int emulator::run(int argc, char **argv) {
 }
 
 int emulator::start() {
+    if (this->disp) {
+        if (!this->disp->init("gbc-emu", 3)) {
+            std::cout << "Warning: Display initialization failed. Running without display." << std::endl;
+        }
+    }
+
     while (this->current != emulator::status::stopped) {
         this->cpu->step();
+
+        if (this->vid && this->vid->is_frame_ready()) {
+            if (this->disp && this->disp->is_initialized()) {
+                this->disp->update(this->vid->get_framebuffer());
+                this->disp->poll_events(this);
+            }
+            this->vid->clear_frame_ready();
+        }
     }
 
     return 0;

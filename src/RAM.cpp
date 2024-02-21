@@ -1,4 +1,11 @@
 #include "RAM.h"
+#include <cstring>
+
+ram::ram() {
+    std::memset(wram, 0, sizeof(wram));
+    std::memset(hram, 0, sizeof(hram));
+    interrupt = 0;
+}
 
 uint8_t ram::wram_read(uint16_t address) {
     if (address < 0xC000 || address >= 0xE000) {

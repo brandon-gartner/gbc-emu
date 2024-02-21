@@ -79,14 +79,14 @@ class instruction {
     uint8_t get_cb_val(int mod);
     void set_cb_val(int mod, uint8_t val);
 
-    processor* cpu;
-    uint8_t opcode;
+    processor* cpu = nullptr;
+    uint8_t opcode = 0;
     instruction_type type;
-    addressing_mode mode;
-    register_type reg_1;
-    register_type reg_2;
-    condition_type cond;
-    uint8_t parameter;
+    addressing_mode mode = addressing_mode::IMPLIED;
+    register_type reg_1 = register_type::NONE;
+    register_type reg_2 = register_type::NONE;
+    condition_type cond = condition_type::ALWAYS;
+    uint8_t parameter = 0;
 };
 
 #endif
