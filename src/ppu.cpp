@@ -82,7 +82,7 @@ void ppu::tick(int cycles) {
     // 4 t-cycles per m-cycle
     this->scanline_counter += cycles * 4;
 
-    if (this->scanline_counter >= 456) {
+    while (this->scanline_counter >= 456) {
         this->scanline_counter -= 456;
         this->ly++;
 

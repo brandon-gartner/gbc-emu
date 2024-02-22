@@ -20,9 +20,10 @@ int processor::step() {
         fetch_decode();
         // execute
         execute();
+        emu->add_cycles(instruction::opcode_cycles[opcode]);
     } else {
         emu->add_cycles(1);
-        if (interrupt_flags) {
+        if (interrupt_flags & emu->mem->get_interrupt() & 0x1F) {
             processor_status = running;
         }
     }
@@ -72,16 +73,13 @@ void processor::decode() {
 
         case addressing_mode::REG_D8:
             fetch_result = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             return;
 
         case addressing_mode::REG_D16: {
             uint8_t lo = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             uint8_t hi = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             fetch_result = append(lo, hi);
             return;
@@ -89,38 +87,31 @@ void processor::decode() {
 
         case addressing_mode::REG_ADDR8:
             fetch_result = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             return;
 
         case addressing_mode::REG_ADDR16: {
             uint8_t lo = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             uint8_t hi = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             fetch_result = emu->bus->read8(append(lo, hi));
-            emu->add_cycles(1);
             return;
         }
 
         case addressing_mode::REG_MEMREG: {
             uint16_t address = (current->reg_2 == REG_C) ? (0xFF00 | get_reg(current->reg_2)) : get_reg(current->reg_2);
             fetch_result = emu->bus->read8(address);
-            emu->add_cycles(1);
             return;
         }
 
         case addressing_mode::REG_HLPLUS:
             fetch_result = emu->bus->read8(get_reg(current->reg_2));
-            emu->add_cycles(1);
             set_reg(current->reg_2, true, get_reg(current->reg_2) + 1);
             return;
 
         case addressing_mode::REG_HLMINUS:
             fetch_result = emu->bus->read8(get_reg(current->reg_2));
-            emu->add_cycles(1);
             set_reg(current->reg_2, true, get_reg(current->reg_2) - 1);
             return;
 
@@ -133,10 +124,8 @@ void processor::decode() {
 
         case addressing_mode::D16: {
             uint8_t lo = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             uint8_t hi = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             fetch_result = append(lo, hi);
             return;
@@ -145,10 +134,8 @@ void processor::decode() {
         case addressing_mode::D16_REG: {
             destination_is_memory = true;
             uint8_t lo = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             uint8_t hi = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             destination_address = append(lo, hi);
             fetch_result = get_reg(current->reg_2);
@@ -158,7 +145,6 @@ void processor::decode() {
         case addressing_mode::MEMREG_D8:
             destination_is_memory = true;
             fetch_result = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             destination_address = get_reg(current->reg_1);
             return;
@@ -166,17 +152,14 @@ void processor::decode() {
         case addressing_mode::ADDR8_REG:
             destination_is_memory = true;
             destination_address = (emu->bus->read8(reg_pc) | 0xFF00);
-            emu->add_cycles(1);
             reg_pc++;
             return;
 
         case addressing_mode::ADDR16_REG: {
             destination_is_memory = true;
             uint8_t lo = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             uint8_t hi = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             destination_address = append(lo, hi);
             fetch_result = get_reg(current->reg_2);
@@ -187,7 +170,6 @@ void processor::decode() {
             destination_is_memory = true;
             destination_address = get_reg(current->reg_1);
             fetch_result = emu->bus->read8(current->reg_1);
-            emu->add_cycles(1);
             return;
 
         case addressing_mode::MEMREG_REG:
@@ -212,7 +194,6 @@ void processor::decode() {
 
         case addressing_mode::HL_SPTR:
             fetch_result = emu->bus->read8(reg_pc);
-            emu->add_cycles(1);
             reg_pc++;
             return;
 

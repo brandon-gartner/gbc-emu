@@ -22,6 +22,7 @@ uint16_t interrupt::get_interrupt_address(interrupt_type type) {
 void interrupt::handle_interrupt(uint16_t address) {
     cpu->emu->stack->stack_push16(cpu->get_reg(REG_PC));
     cpu->set_pc(address);
+    cpu->emu->add_cycles(5);
 }
 
 bool interrupt::check_interrupt(interrupt_type type) {
@@ -29,6 +30,7 @@ bool interrupt::check_interrupt(interrupt_type type) {
         handle_interrupt(get_interrupt_address(type));
         cpu->interrupt_flags &= ~(type);
         cpu->emu->set_status(cpu->emu->main_mode);
+        cpu->processor_status = processor::running;
         cpu->interrupt_enabled = false;
         return true;
     }

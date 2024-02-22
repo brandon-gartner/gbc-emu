@@ -28,12 +28,14 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 clean:
-	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test
+	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test
 
 test: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/joypad_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/joypad_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/mbc_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/mbc_test $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -Isrc tests/timing_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/timing_test $(LDFLAGS)
 	./tests/joypad_test
 	./tests/mbc_test
+	./tests/timing_test
 
 .PHONY: all clean test

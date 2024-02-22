@@ -175,10 +175,6 @@ void instruction::add() {
     int c_flag = 0;
     result = cpu->get_reg(this->reg_1) + cpu->fetch_result;
 
-    if (!reg_is_8bit(reg_1)) {
-        cpu->emu->add_cycles(1);
-    }
-
     if (reg_1 == REG_SP) {
         result = cpu->reg_sp + (char)cpu->fetch_result;  // allows for subtraction if fetch_result is negative
     }
@@ -278,12 +274,10 @@ void instruction::ld() {
         cpu->set_flag_n(0);
         cpu->set_flag_h(((sp & 0x0F) + (offset_u8 & 0x0F)) > 0x0F);
         cpu->set_flag_c(((sp & 0xFF) + (offset_u8 & 0xFF)) > 0xFF);
-        cpu->emu->add_cycles(1);
         return;
     }
     if (cpu->destination_is_memory) {
         if (cpu->current->reg_2 == register_type::REG_SP) {
-            cpu->emu->add_cycles(1);
             cpu->emu->bus->write16(cpu->destination_address, cpu->fetch_result);
         } else {
             cpu->emu->bus->write8(cpu->destination_address, cpu->fetch_result);
@@ -304,28 +298,20 @@ void instruction::ldh() {
         // write A to destination_address (0xFF00 + a8)
         cpu->emu->bus->write8(cpu->destination_address, cpu->get_reg(cpu->current->reg_2));
     }
-
-    cpu->emu->add_cycles(1);
 }
 
 // make sure no & 0xFF is needed here
 void instruction::push() {
     uint16_t hi = cpu->get_reg(cpu->current->reg_1) >> 8;
-    cpu->emu->add_cycles(1);
     cpu->emu->stack->stack_push8(hi);
 
     uint16_t lo = cpu->get_reg(cpu->current->reg_1) & 0xFF;
-    cpu->emu->add_cycles(1);
     cpu->emu->stack->stack_push8(lo);
-
-    cpu->emu->add_cycles(1);
 }
 
 void instruction::pop() {
     uint16_t lo = cpu->emu->stack->stack_pop8();
-    cpu->emu->add_cycles(1);
     uint16_t hi = cpu->emu->stack->stack_pop8();
-    cpu->emu->add_cycles(1);
 
     uint16_t result = append(lo, hi);
 
@@ -346,8 +332,9 @@ void instruction::jp() {
         // std::cout << "Checked conditions" << std::endl;
         cpu->set_pc(cpu->fetch_result);
         // std::cout << "PC updated" << std::endl;
-        cpu->emu->add_cycles(1);
-        // std::cout << "Cycles added" << std::endl;
+        if (cond != ALWAYS) {
+            cpu->emu->add_cycles(1);
+        }
     }
 }
 
@@ -356,47 +343,37 @@ void instruction::jr() {
     if (check_conditions()) {
         cpu->set_pc(cpu->reg_pc + (int8_t)cpu->fetch_result);
         // cpu->set_pc(cpu->reg_pc + ((uint8_t)(cpu->fetch_result) % 0xFF));
-        cpu->emu->add_cycles(1);
+        if (cond != ALWAYS) {
+            cpu->emu->add_cycles(1);
+        }
     }
 }
 
 void instruction::call() {
     if (check_conditions()) {
         cpu->emu->stack->stack_push16(cpu->reg_pc);
-        cpu->emu->add_cycles(2);
-        // std::cout << "Checked conditions" << std::endl;
-
         cpu->set_pc(cpu->fetch_result);
-        // std::cout << "PC updated" << std::endl;
-        cpu->emu->add_cycles(1);
-        // std::cout << "Cycles added" << std::endl;
+        if (cond != ALWAYS) {
+            cpu->emu->add_cycles(3);
+        }
     }
 }
 
 void instruction::ret() {
-    if (cond != ALWAYS) {
-        cpu->emu->add_cycles(1);
-    }
-
     if (check_conditions()) {
         uint16_t lo = cpu->emu->stack->stack_pop8();
-        cpu->emu->add_cycles(1);
-
         uint16_t hi = cpu->emu->stack->stack_pop8();
-        cpu->emu->add_cycles(1);
-
         cpu->set_pc(append(lo, hi));
-        cpu->emu->add_cycles(1);
+        if (cond != ALWAYS) {
+            cpu->emu->add_cycles(3);
+        }
     }
 }
 
 void instruction::rst() {
     if (check_conditions()) {
         cpu->emu->stack->stack_push16(cpu->reg_pc);
-        cpu->emu->add_cycles(2);
-
         cpu->set_pc(cpu->current->parameter);
-        cpu->emu->add_cycles(1);
     }
 }
 
@@ -544,8 +521,77 @@ void instruction::cp() {
 }
 
 void instruction::halt() {
-    cpu->emu->set_status(emulator::status::paused);
+    cpu->processor_status = processor::stopped;
 }
+
+const uint8_t instruction::opcode_cycles[256] = {
+    // 0x0_
+    1, 3, 2, 2, 1, 1, 2, 1, 5, 2, 2, 2, 1, 1, 2, 1,
+    // 0x1_
+    1, 3, 2, 2, 1, 1, 2, 1, 3, 2, 2, 2, 1, 1, 2, 1,
+    // 0x2_
+    2, 3, 2, 2, 1, 1, 2, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+    // 0x3_
+    2, 3, 2, 2, 3, 3, 3, 1, 2, 2, 2, 2, 1, 1, 2, 1,
+    // 0x4_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0x5_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0x6_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0x7_
+    2, 2, 2, 2, 2, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0x8_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0x9_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0xA_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0xB_
+    1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1,
+    // 0xC_
+    2, 3, 3, 4, 3, 4, 2, 4, 2, 4, 3, 0, 3, 6, 2, 4,
+    // 0xD_
+    2, 3, 3, 0, 3, 4, 2, 4, 2, 4, 3, 0, 3, 0, 2, 4,
+    // 0xE_
+    3, 3, 2, 0, 0, 4, 2, 4, 4, 1, 4, 0, 0, 0, 2, 4,
+    // 0xF_
+    3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4
+};
+
+const uint8_t instruction::cb_opcode_cycles[256] = {
+    // 0x00 - 0x07 (RLC)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x08 - 0x0F (RRC)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x10 - 0x17 (RL)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x18 - 0x1F (RR)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x20 - 0x27 (SLA)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x28 - 0x2F (SRA)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x30 - 0x37 (SWAP)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x38 - 0x3F (SRL)
+    2, 2, 2, 2, 2, 2, 4, 2,
+    // 0x40 - 0x7F (BIT 0-7: (HL) is 3 M-cycles, register is 2)
+    2, 2, 2, 2, 2, 2, 3, 2,  2, 2, 2, 2, 2, 2, 3, 2,
+    2, 2, 2, 2, 2, 2, 3, 2,  2, 2, 2, 2, 2, 2, 3, 2,
+    2, 2, 2, 2, 2, 2, 3, 2,  2, 2, 2, 2, 2, 2, 3, 2,
+    2, 2, 2, 2, 2, 2, 3, 2,  2, 2, 2, 2, 2, 2, 3, 2,
+    // 0x80 - 0xBF (RES 0-7: (HL) is 4 M-cycles, register is 2)
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    // 0xC0 - 0xFF (SET 0-7: (HL) is 4 M-cycles, register is 2)
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2,
+    2, 2, 2, 2, 2, 2, 4, 2,  2, 2, 2, 2, 2, 2, 4, 2
+};
 
 // whenever using this, set the cpu immediately.
 // might need to come back to here for a lot of them, check todo
@@ -902,11 +948,7 @@ void instruction::cb() {
     int div_result = byte / 8;
     int mod = byte % 8;
 
-    cpu->emu->add_cycles(1);
-
-    if (mod == 6 /*HL*/) {
-        cpu->emu->add_cycles(2);
-    }
+    cpu->emu->add_cycles(cb_opcode_cycles[byte]);
     switch (div_result) {
         case 0:
             rlc(mod);

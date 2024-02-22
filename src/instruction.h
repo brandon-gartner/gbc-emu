@@ -13,6 +13,8 @@ class instruction {
    public:
     static std::map<uint8_t, instruction*> instruction_set;
     static std::map<int, register_type> cb_registers;
+    static const uint8_t opcode_cycles[256];
+    static const uint8_t cb_opcode_cycles[256];
 
     instruction(instruction_type type)
         : type(type) {}
