@@ -12,3 +12,4 @@ emu
 resources/*.png
 scratch/
 known_bugs/
+tests/*_test

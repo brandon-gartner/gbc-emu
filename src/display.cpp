@@ -4,7 +4,19 @@
 #include "emulator.h"
 #include "joypad.h"
 
-display::display() : window(nullptr), renderer(nullptr), texture(nullptr), scale(3), initialized(false) {}
+display::display()
+    : window(nullptr),
+      renderer(nullptr),
+      texture(nullptr),
+      scale(3),
+      initialized(false),
+      base_title("gbc-emu"),
+      last_frame_time(0),
+      perf_freq(0),
+      frame_count(0),
+      fps_timer(0),
+      current_fps(0.0),
+      turbo_mode(false) {}
 
 display::~display() {
     this->cleanup();
@@ -47,7 +59,7 @@ bool display::init(const char* title, int scale) {
     );
 
     if (!this->renderer) {
-        // Fallback to software renderer if accelerated fails
+        // fallback to software renderer if accelerated fails
         this->renderer = SDL_CreateRenderer(this->window, -1, SDL_RENDERER_SOFTWARE);
         if (!this->renderer) {
             std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -76,6 +88,14 @@ bool display::init(const char* title, int scale) {
         return false;
     }
 
+    this->base_title = title;
+    this->perf_freq = SDL_GetPerformanceFrequency();
+    this->last_frame_time = SDL_GetPerformanceCounter();
+    this->fps_timer = this->last_frame_time;
+    this->frame_count = 0;
+    this->current_fps = 59.7;
+    this->turbo_mode = false;
+
     this->initialized = true;
     return true;
 }
@@ -89,6 +109,51 @@ void display::update(const uint32_t* framebuffer) {
     SDL_RenderClear(this->renderer);
     SDL_RenderCopy(this->renderer, this->texture, nullptr, nullptr);
     SDL_RenderPresent(this->renderer);
+}
+
+void display::sync_frame() {
+    uint64_t now = SDL_GetPerformanceCounter();
+
+    if (!this->turbo_mode && this->perf_freq > 0) {
+        // game boy runs at 4194304 hz / 70224 cycles per frame = ~59.7275 hz
+        double target_ticks = (double)this->perf_freq / 59.7275;
+        double elapsed_ticks = (double)(now - this->last_frame_time);
+
+        if (elapsed_ticks < target_ticks) {
+            double remaining_ms = (target_ticks - elapsed_ticks) * 1000.0 / (double)this->perf_freq;
+            // sleep if more than 2ms remaining to save cpu
+            if (remaining_ms > 2.0) {
+                SDL_Delay((Uint32)(remaining_ms - 1.0));
+            }
+            // spin wait for remainder
+            while ((double)(SDL_GetPerformanceCounter() - this->last_frame_time) < target_ticks) {
+                // spin
+            }
+        }
+    }
+
+    now = SDL_GetPerformanceCounter();
+    this->last_frame_time = now;
+    this->frame_count++;
+
+    // update fps once per second
+    if (this->perf_freq > 0) {
+        uint64_t diff = now - this->fps_timer;
+        if (diff >= this->perf_freq) {
+            double seconds = (double)diff / (double)this->perf_freq;
+            this->current_fps = (double)this->frame_count / seconds;
+            this->frame_count = 0;
+            this->fps_timer = now;
+
+            if (this->window) {
+                char title_buf[128];
+                snprintf(title_buf, sizeof(title_buf), "%s [%.1f FPS%s]", 
+                         this->base_title.c_str(), this->current_fps, 
+                         this->turbo_mode ? " - TURBO" : "");
+                SDL_SetWindowTitle(this->window, title_buf);
+            }
+        }
+    }
 }
 
 void display::poll_events(emulator* emu) {
@@ -137,6 +202,9 @@ void display::poll_events(emulator* emu) {
                         case SDLK_SPACE:
                             emu->pad->key_down(joypad::SELECT);
                             break;
+                        case SDLK_TAB:
+                            this->turbo_mode = true;
+                            break;
                         case SDLK_ESCAPE:
                             emu->set_status(emulator::status::stopped);
                             break;
@@ -145,6 +213,9 @@ void display::poll_events(emulator* emu) {
                 break;
 
             case SDL_KEYUP:
+                if (event.key.keysym.sym == SDLK_TAB) {
+                    this->turbo_mode = false;
+                }
                 if (emu->pad) {
                     switch (event.key.keysym.sym) {
                         case SDLK_RIGHT:

@@ -69,6 +69,7 @@ int emulator::start() {
             if (this->disp && this->disp->is_initialized()) {
                 this->disp->update(this->vid->get_framebuffer());
                 this->disp->poll_events(this);
+                this->disp->sync_frame();
             }
             this->vid->clear_frame_ready();
         }

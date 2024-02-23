@@ -6,39 +6,39 @@
 #include "timer.h"
 
 void test_tables() {
-    // Standard opcodes
-    assert(instruction::opcode_cycles[0x00] == 1); // NOP
-    assert(instruction::opcode_cycles[0x01] == 3); // LD BC, d16
-    assert(instruction::opcode_cycles[0x08] == 5); // LD (a16), SP
-    assert(instruction::opcode_cycles[0x20] == 2); // JR NZ, r8 (base)
-    assert(instruction::opcode_cycles[0x36] == 3); // LD (HL), d8
-    assert(instruction::opcode_cycles[0x76] == 1); // HALT
-    assert(instruction::opcode_cycles[0xC0] == 2); // RET NZ (base)
-    assert(instruction::opcode_cycles[0xC3] == 4); // JP a16
-    assert(instruction::opcode_cycles[0xC4] == 3); // CALL NZ, a16 (base)
-    assert(instruction::opcode_cycles[0xC5] == 4); // PUSH BC
-    assert(instruction::opcode_cycles[0xC9] == 4); // RET
-    assert(instruction::opcode_cycles[0xCB] == 0); // CB prefix (cycles handled by cb)
-    assert(instruction::opcode_cycles[0xCD] == 6); // CALL a16
-    assert(instruction::opcode_cycles[0xE0] == 3); // LDH (a8), A
-    assert(instruction::opcode_cycles[0xEA] == 4); // LD (a16), A
-    assert(instruction::opcode_cycles[0xF3] == 1); // DI
-    assert(instruction::opcode_cycles[0xFB] == 1); // EI
+    // standard opcodes
+    assert(instruction::opcode_cycles[0x00] == 1); // nop
+    assert(instruction::opcode_cycles[0x01] == 3); // ld bc, d16
+    assert(instruction::opcode_cycles[0x08] == 5); // ld (a16), sp
+    assert(instruction::opcode_cycles[0x20] == 2); // jr nz, r8 (base)
+    assert(instruction::opcode_cycles[0x36] == 3); // ld (hl), d8
+    assert(instruction::opcode_cycles[0x76] == 1); // halt
+    assert(instruction::opcode_cycles[0xC0] == 2); // ret nz (base)
+    assert(instruction::opcode_cycles[0xC3] == 4); // jp a16
+    assert(instruction::opcode_cycles[0xC4] == 3); // call nz, a16 (base)
+    assert(instruction::opcode_cycles[0xC5] == 4); // push bc
+    assert(instruction::opcode_cycles[0xC9] == 4); // ret
+    assert(instruction::opcode_cycles[0xCB] == 0); // cb prefix (cycles handled by cb)
+    assert(instruction::opcode_cycles[0xCD] == 6); // call a16
+    assert(instruction::opcode_cycles[0xE0] == 3); // ldh (a8), a
+    assert(instruction::opcode_cycles[0xEA] == 4); // ld (a16), a
+    assert(instruction::opcode_cycles[0xF3] == 1); // di
+    assert(instruction::opcode_cycles[0xFB] == 1); // ei
 
-    // CB opcodes
-    assert(instruction::cb_opcode_cycles[0x00] == 2); // RLC B
-    assert(instruction::cb_opcode_cycles[0x06] == 4); // RLC (HL)
-    assert(instruction::cb_opcode_cycles[0x7C] == 2); // BIT 7, H
-    assert(instruction::cb_opcode_cycles[0x7E] == 3); // BIT 7, (HL)
-    assert(instruction::cb_opcode_cycles[0x86] == 4); // RES 0, (HL)
-    assert(instruction::cb_opcode_cycles[0xC6] == 4); // SET 0, (HL)
+    // cb opcodes
+    assert(instruction::cb_opcode_cycles[0x00] == 2); // rlc b
+    assert(instruction::cb_opcode_cycles[0x06] == 4); // rlc (hl)
+    assert(instruction::cb_opcode_cycles[0x7C] == 2); // bit 7, h
+    assert(instruction::cb_opcode_cycles[0x7E] == 3); // bit 7, (hl)
+    assert(instruction::cb_opcode_cycles[0x86] == 4); // res 0, (hl)
+    assert(instruction::cb_opcode_cycles[0xC6] == 4); // set 0, (hl)
 
     std::cout << "Cycle lookup tables verified successfully!" << std::endl;
 }
 
 void test_timer_timing() {
     emulator emu;
-    // timer divider ticks 1 for every 64 M-cycles (256 T-cycles)
+    // timer divider ticks 1 for every 64 m-cycles (256 t-cycles)
     assert(emu.tmr->read(0xFF04) == 0);
 
     emu.add_cycles(63);
@@ -55,7 +55,7 @@ void test_timer_timing() {
 
 void test_ppu_timing() {
     emulator emu;
-    // PPU advances 1 scanline (LY) every 114 M-cycles (456 T-cycles)
+    // ppu advances 1 scanline (ly) every 114 m-cycles (456 t-cycles)
     assert(emu.vid->read_reg(0xFF44) == 0);
 
     emu.add_cycles(113);
@@ -64,8 +64,8 @@ void test_ppu_timing() {
     emu.add_cycles(1);
     assert(emu.vid->read_reg(0xFF44) == 1);
 
-    // 154 lines total per frame: 154 * 114 = 17556 M-cycles
-    // We already did 114 M-cycles, so do remaining 153 * 114 = 17442 M-cycles
+    // 154 lines total per frame: 154 * 114 = 17556 m-cycles
+    // already did 114 m-cycles, so do remaining 153 * 114 = 17442 m-cycles
     emu.add_cycles(17442);
     assert(emu.vid->is_frame_ready());
     assert(emu.vid->read_reg(0xFF44) == 0); // rolled over back to line 0
