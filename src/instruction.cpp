@@ -116,7 +116,7 @@ int instruction::execute() {
 void instruction::inc() {
     uint16_t result = 0;
 
-    // special case of HL
+    // special case of (hl)
     if (mode == MEMREG && reg_1 == REG_HL) {
         result = ((cpu->emu->bus->read8(cpu->get_reg(REG_HL)) + 1) & 0xFF);
         cpu->emu->bus->write8(cpu->get_reg(REG_HL), result);
@@ -125,12 +125,12 @@ void instruction::inc() {
         cpu->set_reg(reg_1, !reg_is_8bit(reg_1), result);
     }
 
-    // don't want to override flags for certain cases of inc
-    if ((opcode & 0x03) == 0x03) {
+    // 16-bit inc does not modify flags
+    if (mode != MEMREG && !reg_is_8bit(reg_1)) {
         return;
     }
 
-    cpu->set_flag_z(result == 0);
+    cpu->set_flag_z((result & 0xFF) == 0);
     cpu->set_flag_n(0);
     cpu->set_flag_h((result & 0x0F) == 0x00);
 }
@@ -141,7 +141,6 @@ void instruction::dec() {
 
     if (mode == MEMREG && reg_1 == REG_HL) {
         uint8_t old_value = cpu->emu->bus->read8(cpu->get_reg(REG_HL));
-
         uint8_t new_value = old_value - 1;
         cpu->emu->bus->write8(cpu->get_reg(REG_HL), new_value);
 
@@ -163,42 +162,48 @@ void instruction::dec() {
         return;
     }
 
-    cpu->set_flag_z(result == 0);
+    cpu->set_flag_z((result & 0xFF) == 0);
     cpu->set_flag_n(1);
-    cpu->set_flag_h((result & 0x0F) == 0x0F);
+    cpu->set_flag_h((old_value & 0x0F) == 0x00);
 }
 
 void instruction::add() {
-    uint32_t result = 0;  // uint32 because 16bit + 16bit can carry over into 32bit.
+    uint32_t result = 0;
     int z_flag = 0;
     int h_flag = 0;
     int c_flag = 0;
     result = cpu->get_reg(this->reg_1) + cpu->fetch_result;
 
     if (reg_1 == REG_SP) {
-        result = cpu->reg_sp + (char)cpu->fetch_result;  // allows for subtraction if fetch_result is negative
+        int8_t offset = (int8_t)cpu->fetch_result;
+        result = cpu->reg_sp + offset;
+        h_flag = ((cpu->reg_sp & 0x0F) + (cpu->fetch_result & 0x0F)) > 0x0F;
+        c_flag = ((cpu->reg_sp & 0xFF) + (cpu->fetch_result & 0xFF)) > 0xFF;
+        cpu->set_reg(REG_SP, true, result);
+        cpu->set_flag_z(0);
+        cpu->set_flag_n(0);
+        cpu->set_flag_h(h_flag);
+        cpu->set_flag_c(c_flag);
+        return;
     }
-
-    // TODO: make a function for each flag check
-    z_flag = (result & 0xFF) == 0;
-    h_flag = ((cpu->get_reg(this->reg_1) & 0x0F) + (cpu->fetch_result & 0x0F)) > 0x0F;  // 0x0F or 0x10
-    c_flag = (result & 0x100) == 0x100;                                                 // TODO: verify this line
 
     if (!reg_is_8bit(reg_1)) {
-        z_flag = -1;
-        // allow addition to surpass 16-bit
-        h_flag = ((int)cpu->get_reg(this->reg_1) & 0x0FFF) + (cpu->fetch_result & 0x0FFF) > 0x0FFF;  // 0xFFF or 0x1000
-        c_flag = ((int)result & 0x10000) == 0x10000;                                                 // TODO: figure out if result should be right here
+        // 16-bit add hl, rr: z flag is not affected
+        h_flag = ((cpu->get_reg(this->reg_1) & 0x0FFF) + (cpu->fetch_result & 0x0FFF)) > 0x0FFF;
+        c_flag = ((uint32_t)cpu->get_reg(this->reg_1) + (uint32_t)cpu->fetch_result) > 0xFFFF;
+        cpu->set_reg(this->reg_1, true, result);
+        cpu->set_flag_n(0);
+        cpu->set_flag_h(h_flag);
+        cpu->set_flag_c(c_flag);
+        return;
     }
 
-    if (reg_1 == REG_SP) {
-        // code reuse from 2 lines above
-        z_flag = 0;
-        h_flag = ((cpu->get_reg(REG_SP) & 0x0F) + (cpu->fetch_result & 0x0F)) > 0x0F;  // 0x0F or 0x10
-        c_flag = (result & 0x100) == 0x100;                                            // TODO: verify this line
-    }
+    // 8-bit add
+    z_flag = ((result & 0xFF) == 0);
+    h_flag = ((cpu->get_reg(this->reg_1) & 0x0F) + (cpu->fetch_result & 0x0F)) > 0x0F;
+    c_flag = (result > 0xFF);
 
-    cpu->set_reg(this->reg_1, !reg_is_8bit(reg_1), result);
+    cpu->set_reg(this->reg_1, false, result & 0xFF);
     cpu->set_flag_z(z_flag);
     cpu->set_flag_n(0);
     cpu->set_flag_h(h_flag);
@@ -206,15 +211,16 @@ void instruction::add() {
 }
 
 void instruction::adc() {
-    uint32_t result = cpu->fetch_result;
+    uint32_t val = cpu->fetch_result;
     uint8_t acc = cpu->get_reg(REG_A);
     uint8_t carry = cpu->get_flag_c();
+    uint32_t full = acc + val + carry;
 
-    cpu->set_reg(REG_A, reg_is_8bit(reg_1), acc + result + carry);
+    cpu->set_reg(REG_A, false, full & 0xFF);
 
-    int z_flag = (result & 0xFF) == 0;
-    int h_flag = carry + ((cpu->get_reg(this->reg_1) & 0x0F) + (cpu->fetch_result & 0x0F)) > 0x0F;  // 0x0F or 0x10
-    int c_flag = (result + acc + carry > 0xFF);                                                     // TODO: verify this line
+    int z_flag = ((full & 0xFF) == 0);
+    int h_flag = ((acc & 0x0F) + (val & 0x0F) + carry) > 0x0F;
+    int c_flag = full > 0xFF;
 
     cpu->set_flag_z(z_flag);
     cpu->set_flag_n(0);
@@ -223,36 +229,28 @@ void instruction::adc() {
 }
 
 void instruction::sub() {
-    // need not be 32, no overflow
-    uint16_t result = cpu->get_reg(reg_1) - cpu->fetch_result;
+    uint8_t a = cpu->get_reg(REG_A);
+    uint8_t val = cpu->fetch_result;
+    int result = (int)a - (int)val;
 
-    uint16_t reg_1_val = cpu->get_reg(reg_1);
-
-    int z_flag = (result == 0);
-    int h_flag = (reg_1_val & 0xF) - ((int)cpu->fetch_result & 0xF) < 0;
-    int c_flag = reg_1_val < cpu->fetch_result;
-
-    cpu->set_reg(reg_1, !reg_is_8bit(reg_1), result);
-    cpu->set_flag_z(z_flag);
+    cpu->set_reg(REG_A, false, result & 0xFF);
+    cpu->set_flag_z((result & 0xFF) == 0);
     cpu->set_flag_n(1);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_flag_h(((a & 0x0F) - (val & 0x0F)) < 0);
+    cpu->set_flag_c(result < 0);
 }
 
 void instruction::sbc() {
-    int carry = cpu->get_flag_c();
-    uint8_t sub_amount = cpu->fetch_result + cpu->get_flag_c();
+    uint8_t a = cpu->get_reg(REG_A);
+    uint8_t val = cpu->fetch_result;
+    uint8_t carry = cpu->get_flag_c();
+    int result = (int)a - (int)val - (int)carry;
 
-    uint16_t reg_1_val = cpu->get_reg(reg_1);
-
-    int z_flag = cpu->get_reg(reg_1) - sub_amount == 0;
-    int h_flag = (reg_1_val & 0xF) - ((int)sub_amount & 0xF) - carry < 0;
-    int c_flag = ((int)cpu->get_reg(reg_1) - (int)sub_amount) < 0;  // may need carry here brain is tired
-
-    cpu->set_flag_z(z_flag);
-    cpu->set_flag_n(0);
-    cpu->set_flag_h(h_flag);
-    cpu->set_flag_c(c_flag);
+    cpu->set_reg(REG_A, false, result & 0xFF);
+    cpu->set_flag_z((result & 0xFF) == 0);
+    cpu->set_flag_n(1);
+    cpu->set_flag_h(((a & 0x0F) - (val & 0x0F) - (int)carry) < 0);
+    cpu->set_flag_c(result < 0);
 }
 void instruction::ei() {
     cpu->ei_delay = 2;
@@ -831,7 +829,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0xC3, new instruction{instruction_type::JP, addressing_mode::D16}},
     {0xC4, new instruction{instruction_type::CALL, addressing_mode::D16, NONE, NONE, NZ}},
     {0xC5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_BC}},
-    {0xC6, new instruction{ADD, REG_ADDR8, REG_A}},
+    {0xC6, new instruction{ADD, REG_D8, REG_A}},
     {0xC7, new instruction(RST, IMPLIED, NONE, NONE, ALWAYS, (uint8_t)0x00)},
     {0xC8, new instruction{RET, IMPLIED, NONE, NONE, Z}},
     {0xC9, new instruction{RET, IMPLIED}},
@@ -850,7 +848,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     // there is no D3
     {0xD4, new instruction{instruction_type::CALL, addressing_mode::D16, NONE, NONE, NC}},
     {0xD5, new instruction{instruction_type::PUSH, addressing_mode::REG, register_type::REG_DE}},
-    {0xD6, new instruction{SUB, D8}},
+    {0xD6, new instruction{SUB, REG_D8, REG_A}},
     {0xD7, new instruction{RST, IMPLIED, NONE, NONE, ALWAYS, (uint8_t)0x10}},
     {0xD8, new instruction{RET, IMPLIED, NONE, NONE, C}},
     {0xD9, new instruction{RETI, IMPLIED}},
