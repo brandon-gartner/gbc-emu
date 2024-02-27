@@ -169,7 +169,7 @@ void processor::decode() {
         case addressing_mode::MEMREG:
             destination_is_memory = true;
             destination_address = get_reg(current->reg_1);
-            fetch_result = emu->bus->read8(current->reg_1);
+            fetch_result = emu->bus->read8(destination_address);
             return;
 
         case addressing_mode::MEMREG_REG:

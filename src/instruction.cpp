@@ -437,22 +437,16 @@ void instruction::daa() {
     bool c = cpu->get_flag_c();
     bool h = cpu->get_flag_h();
 
-    if (!n) {
-        if (c || a > 0x99) {
-            a += 0x60;
-            c = true;
-        }
-        if (h || (a & 0x0F) > 0x09) {
-            a += 0x06;
-        }
-    } else {
-        if (c) {
-            a -= 0x60;
-        }
-        if (h) {
-            a -= 0x06;
-        }
+    uint8_t adjust = 0;
+    if (h || (!n && (a & 0x0F) > 0x09)) {
+        adjust |= 0x06;
     }
+    if (c || (!n && a > 0x99)) {
+        adjust |= 0x60;
+        c = true;
+    }
+
+    a += n ? -adjust : adjust;
 
     cpu->set_reg(REG_A, false, a);
     cpu->set_flag_z(a == 0);
@@ -615,7 +609,7 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
 
     // 0x1 ✓
     // load instructions are mostly clones of 0x loads, but BC -> DE, B -> D, C -> E
-    {0x10, new instruction{STOP}},
+    {0x10, new instruction{STOP, D8}},
     {0x11, new instruction{instruction_type::LD, addressing_mode::REG_D16, register_type::REG_DE}},
     {0x12, new instruction{instruction_type::LD, addressing_mode::MEMREG_REG, register_type::REG_DE, register_type::REG_A}},
     {0x13, new instruction{INC, REG, REG_DE}},

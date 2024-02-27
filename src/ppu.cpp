@@ -26,6 +26,7 @@ ppu::ppu(emulator* emu) : emu(emu) {
     this->wx = 0;
 
     this->scanline_counter = 0;
+    this->window_line_counter = 0;
 }
 
 ppu::~ppu() {}
@@ -90,12 +91,14 @@ void ppu::tick(int cycles) {
             // enter vblank
             this->set_mode(1);
             this->frame_ready = true;
+            this->window_line_counter = 0;
             if (this->emu && this->emu->intr) {
                 this->emu->intr->request_interrupt(interrupt::vblank);
             }
         } else if (this->ly > 153) {
             // frame complete, return to scanline 0
             this->ly = 0;
+            this->window_line_counter = 0;
             this->set_mode(2);
         }
 
@@ -189,6 +192,7 @@ void ppu::write_reg(uint16_t address, uint8_t value) {
                 // lcd disabled: reset ly and scanline counter
                 this->ly = 0;
                 this->scanline_counter = 0;
+                this->window_line_counter = 0;
                 this->set_mode(0);
             } else if (!was_enabled && is_enabled) {
                 // lcd enabled
@@ -332,7 +336,7 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
     uint16_t map_offset = (this->lcdc & 0x40) ? 0x1C00 : 0x1800;
     bool unsigned_tiles = (this->lcdc & 0x10) != 0;
 
-    uint8_t window_y = this->ly - this->wy;
+    uint8_t window_y = this->window_line_counter;
     uint16_t tile_row = ((uint16_t)(window_y / 8)) * 32;
     uint8_t tile_y = window_y % 8;
 
@@ -362,6 +366,9 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
         uint8_t shade = (this->bgp >> (color_id * 2)) & 0x03;
         this->framebuffer[this->ly * 160 + x] = get_dmg_color(shade);
     }
+
+    // increment internal window line counter only when window is rendered
+    this->window_line_counter++;
 }
 
 void ppu::render_sprites(uint8_t* scanline_color_ids) {

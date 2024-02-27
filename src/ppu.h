@@ -44,6 +44,7 @@ class ppu {
     uint8_t wx;
 
     int scanline_counter;
+    int window_line_counter;
 
     void set_mode(uint8_t mode);
     void check_lyc();
