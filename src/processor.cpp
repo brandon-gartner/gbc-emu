@@ -46,17 +46,12 @@ void processor::fetch_decode() {
 
 void processor::fetch() {
     opcode = emu->bus->read8(reg_pc);
-    // std::cout << "Opcode: " << int_to_hex(opcode) << std::endl;
     reg_pc++;
-    // std::cout << "Getting next instruction" << std::endl;
     current = instruction::instruction_set[opcode];
     if (current == nullptr) {
         NOT_IMPLEMENTED();
     }
-    // std::cout << "Updating cpu pointer in instruction" << std::endl;
     current->cpu = this;
-    // std::cout << "Printing instruction" << std::endl;
-    // current->print();
 }
 
 void processor::decode() {
@@ -206,10 +201,7 @@ void processor::decode() {
 }
 
 void processor::execute() {
-    // printf("Executing instruction: %02X\n", opcode);
-    // printf("Current PC: %04X\n", reg_pc);
     current->execute();
-    // NOT_IMPLEMENTED();
 }
 
 uint16_t processor::get_reg(register_type reg) {
@@ -252,7 +244,6 @@ void processor::set_pc(uint16_t value) {
     reg_pc = value;
 }
 
-// TODO: test these better
 bool processor::get_flag_z() {
     return (reg_f & 0x80) == 0x80;
 }

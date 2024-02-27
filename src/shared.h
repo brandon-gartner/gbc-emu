@@ -124,6 +124,7 @@ std::string print_addressing_mode(addressing_mode mode);
 std::string print_instruction_type(instruction_type type);
 void print_instructions(instruction_type type, addressing_mode mode, register_type reg_1, register_type reg_2, condition_type cond, uint8_t parameter);
 std::string int_to_hex(uint8_t i);
+std::string int_to_hex(uint16_t value);
 bool reg_is_8bit(register_type reg);
 uint16_t append(uint8_t, uint8_t);
 

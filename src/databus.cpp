@@ -133,7 +133,6 @@ uint16_t databus::read16(uint16_t address) {
 }
 
 void databus::write16(uint16_t address, uint16_t value) {
-    // TODO: verify 0xFF?
     write8(address + 1, (value >> 8) & 0xFF);
     write8(address, value & 0xFF);
 }

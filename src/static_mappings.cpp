@@ -61,7 +61,6 @@ std::map<uint8_t, std::string> static_mappings::new_publisher_codes = {
     {0x96, "Yonezawa/s\"pal"},
     {0x97, "Kaneko"},
     {0x99, "Pack in soft"},
-    //{0x9H, "Bottom Up"},  H is not a hexcode, TODO: figure this out
     {0xA4, "Konami (Yu-Gi-Oh!)"},
 };
 
@@ -267,5 +266,3 @@ std::map<uint8_t, std::string> static_mappings::destination_codes = {
     {0x00, "Japan and International"},
     {0x01, "International only"},
 };
-
-// TODO: RAM SIZE DICT

@@ -109,10 +109,9 @@ int instruction::execute() {
             std::cout << "Instruction type not implemented.  Program terminated." << std::endl;
             NOT_IMPLEMENTED();
     }
-    return 0;  // wrong, TODO: decide if return int or void
+    return 0;
 }
 
-// TODO: make sure that double setting the reg wont matter, it shouldnt, but...
 void instruction::inc() {
     uint16_t result = 0;
 
@@ -135,7 +134,6 @@ void instruction::inc() {
     cpu->set_flag_h((result & 0x0F) == 0x00);
 }
 
-// TODO: make sure that double setting the reg wont matter, it shouldnt, but...
 void instruction::dec() {
     uint16_t result = 0;
 
@@ -325,11 +323,8 @@ void instruction::pop() {
 }
 
 void instruction::jp() {
-    // std::cout << "JP" << std::endl;
     if (check_conditions()) {
-        // std::cout << "Checked conditions" << std::endl;
         cpu->set_pc(cpu->fetch_result);
-        // std::cout << "PC updated" << std::endl;
         if (cond != ALWAYS) {
             cpu->emu->add_cycles(1);
         }
@@ -340,7 +335,6 @@ void instruction::jp() {
 void instruction::jr() {
     if (check_conditions()) {
         cpu->set_pc(cpu->reg_pc + (int8_t)cpu->fetch_result);
-        // cpu->set_pc(cpu->reg_pc + ((uint8_t)(cpu->fetch_result) % 0xFF));
         if (cond != ALWAYS) {
             cpu->emu->add_cycles(1);
         }
@@ -586,7 +580,6 @@ const uint8_t instruction::cb_opcode_cycles[256] = {
 };
 
 // whenever using this, set the cpu immediately.
-// might need to come back to here for a lot of them, check todo
 std::map<uint8_t, instruction*> instruction::instruction_set = {
 
     // 0x0 ✓
@@ -936,7 +929,7 @@ void instruction::cb() {
     // SET_5: 232-239
     // SET_6: 240-247
     // SET_7: 248-255
-    int byte = (cpu->fetch_result & 0xFF);  // TODO: test more
+    int byte = (cpu->fetch_result & 0xFF);
     int div_result = byte / 8;
     int mod = byte % 8;
 
@@ -1226,5 +1219,4 @@ void instruction::simple_print() {
     std::cout << this->cpu->reg_pc << ": ";
     std::cout << print_instruction_type(this->type) << " ";
     std::cout << int_to_hex(cpu->opcode) << " " << int_to_hex(cpu->emu->bus->read8(cpu->reg_pc + 1)) << " " << int_to_hex(cpu->emu->bus->read8(cpu->reg_pc + 2)) << std::endl;
-    // print_instructions(type, mode, reg_1, reg_2, cond, parameter);
 }

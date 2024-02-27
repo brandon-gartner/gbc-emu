@@ -34,11 +34,6 @@ class processor {
     void set_flag_c(bool);
 
     processor(emulator* emu);
-    // uint8_t get_reg_8(char);
-    // uint16_t get_reg_16(std::string);
-
-    // uint8_t get_reg_8(register_type);
-    // uint16_t get_reg_16(register_type);
     uint16_t get_reg(register_type);
     void set_reg(register_type, bool, int);
 
