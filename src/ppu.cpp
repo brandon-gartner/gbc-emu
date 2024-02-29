@@ -27,9 +27,18 @@ ppu::ppu(emulator* emu) : emu(emu) {
 
     this->scanline_counter = 0;
     this->window_line_counter = 0;
+    this->vram_bank = 0;
+    this->reset_cgb_palettes();
 }
 
 ppu::~ppu() {}
+
+void ppu::reset_cgb_palettes() {
+    std::memset(this->bg_cram, 0xFF, sizeof(this->bg_cram));
+    std::memset(this->obj_cram, 0xFF, sizeof(this->obj_cram));
+    this->bcps = 0;
+    this->ocps = 0;
+}
 
 void ppu::set_mode(uint8_t mode) {
     this->stat = (this->stat & 0xFC) | (mode & 0x03);
@@ -126,14 +135,21 @@ void ppu::tick(int cycles) {
 
 uint8_t ppu::read_vram(uint16_t offset) {
     if (offset < 0x2000) {
-        return this->vram[offset];
+        return this->vram[this->vram_bank][offset];
+    }
+    return 0xFF;
+}
+
+uint8_t ppu::read_vram(uint16_t offset, uint8_t bank) const {
+    if (offset < 0x2000) {
+        return this->vram[bank & 0x01][offset];
     }
     return 0xFF;
 }
 
 void ppu::write_vram(uint16_t offset, uint8_t value) {
     if (offset < 0x2000) {
-        this->vram[offset] = value;
+        this->vram[this->vram_bank][offset] = value;
     }
 }
 
@@ -177,6 +193,35 @@ uint8_t ppu::read_reg(uint16_t address) {
             return this->wy;
         case 0xFF4B:
             return this->wx;
+        case 0xFF4F:
+            if (this->emu && this->emu->is_cgb_mode()) {
+                return 0xFE | this->vram_bank;
+            }
+            return 0xFF;
+        case 0xFF68:
+            // bcps: background palette index (bit 6 always reads 1)
+            if (this->emu && this->emu->is_cgb_mode()) {
+                return this->bcps | 0x40;
+            }
+            return 0xFF;
+        case 0xFF69:
+            // bcpd: background palette data
+            if (this->emu && this->emu->is_cgb_mode()) {
+                return this->bg_cram[this->bcps & 0x3F];
+            }
+            return 0xFF;
+        case 0xFF6A:
+            // ocps: sprite palette index (bit 6 always reads 1)
+            if (this->emu && this->emu->is_cgb_mode()) {
+                return this->ocps | 0x40;
+            }
+            return 0xFF;
+        case 0xFF6B:
+            // ocpd: sprite palette data
+            if (this->emu && this->emu->is_cgb_mode()) {
+                return this->obj_cram[this->ocps & 0x3F];
+            }
+            return 0xFF;
         default:
             return 0xFF;
     }
@@ -236,7 +281,61 @@ void ppu::write_reg(uint16_t address, uint8_t value) {
         case 0xFF4B:
             this->wx = value;
             break;
+        case 0xFF4F:
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->vram_bank = value & 0x01;
+            }
+            break;
+        case 0xFF68:
+            // bcps: background palette index
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->bcps = value & 0xBF;
+            }
+            break;
+        case 0xFF69:
+            // bcpd: background palette data
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->bg_cram[this->bcps & 0x3F] = value;
+                if (this->bcps & 0x80) {
+                    this->bcps = (this->bcps & 0x80) | (((this->bcps & 0x3F) + 1) & 0x3F);
+                }
+            }
+            break;
+        case 0xFF6A:
+            // ocps: sprite palette index
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->ocps = value & 0xBF;
+            }
+            break;
+        case 0xFF6B:
+            // ocpd: sprite palette data
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->obj_cram[this->ocps & 0x3F] = value;
+                if (this->ocps & 0x80) {
+                    this->ocps = (this->ocps & 0x80) | (((this->ocps & 0x3F) + 1) & 0x3F);
+                }
+            }
+            break;
     }
+}
+
+uint32_t ppu::get_cgb_color(bool is_obj, uint8_t palette_num, uint8_t color_num) const {
+    uint8_t pal = palette_num & 0x07;
+    uint8_t col = color_num & 0x03;
+    uint8_t offset = (pal * 8) + (col * 2);
+    const uint8_t* cram = is_obj ? this->obj_cram : this->bg_cram;
+    uint16_t raw = cram[offset] | (cram[offset + 1] << 8);
+
+    uint8_t r = raw & 0x1F;
+    uint8_t g = (raw >> 5) & 0x1F;
+    uint8_t b = (raw >> 10) & 0x1F;
+
+    // convert 5-bit channels (0-31) to 8-bit (0-255)
+    uint8_t r8 = (r * 255) / 31;
+    uint8_t g8 = (g * 255) / 31;
+    uint8_t b8 = (b * 255) / 31;
+
+    return 0xFF000000 | (r8 << 16) | (g8 << 8) | b8;
 }
 
 uint32_t ppu::get_dmg_color(uint8_t shade) {
@@ -291,7 +390,7 @@ void ppu::render_bg(uint8_t* scanline_color_ids) {
         uint8_t tile_x = x_pos % 8;
 
         uint16_t map_addr = map_offset + tile_row + tile_col;
-        uint8_t tile_num = this->vram[map_addr];
+        uint8_t tile_num = this->vram[0][map_addr];
 
         uint16_t tile_data_offset = 0;
         if (unsigned_tiles) {
@@ -300,8 +399,8 @@ void ppu::render_bg(uint8_t* scanline_color_ids) {
             tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + tile_y * 2;
         }
 
-        uint8_t byte1 = this->vram[tile_data_offset];
-        uint8_t byte2 = this->vram[tile_data_offset + 1];
+        uint8_t byte1 = this->vram[0][tile_data_offset];
+        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
 
         int bit_idx = 7 - tile_x;
         uint8_t color_id = (((byte2 >> bit_idx) & 1) << 1) | ((byte1 >> bit_idx) & 1);
@@ -347,7 +446,7 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
         uint8_t tile_x = win_x % 8;
 
         uint16_t map_addr = map_offset + tile_row + tile_col;
-        uint8_t tile_num = this->vram[map_addr];
+        uint8_t tile_num = this->vram[0][map_addr];
 
         uint16_t tile_data_offset = 0;
         if (unsigned_tiles) {
@@ -356,8 +455,8 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
             tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + tile_y * 2;
         }
 
-        uint8_t byte1 = this->vram[tile_data_offset];
-        uint8_t byte2 = this->vram[tile_data_offset + 1];
+        uint8_t byte1 = this->vram[0][tile_data_offset];
+        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
 
         int bit_idx = 7 - tile_x;
         uint8_t color_id = (((byte2 >> bit_idx) & 1) << 1) | ((byte1 >> bit_idx) & 1);
@@ -426,8 +525,8 @@ void ppu::render_sprites(uint8_t* scanline_color_ids) {
         }
 
         uint16_t tile_data_offset = ((uint16_t)tile_index) * 16 + sprite_row * 2;
-        uint8_t byte1 = this->vram[tile_data_offset];
-        uint8_t byte2 = this->vram[tile_data_offset + 1];
+        uint8_t byte1 = this->vram[0][tile_data_offset];
+        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
 
         uint8_t palette = (spr.flags & 0x10) ? this->obp1 : this->obp0;
         bool bg_priority = (spr.flags & 0x80) != 0;

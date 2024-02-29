@@ -28,16 +28,22 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 clean:
-	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test
+	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test tests/cgb_init_test tests/cgb_banking_test tests/cgb_palette_test
 
 test: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/joypad_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/joypad_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/mbc_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/mbc_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/timing_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/timing_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/frame_sync_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/frame_sync_test $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_init_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_init_test $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_banking_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_banking_test $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_palette_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_palette_test $(LDFLAGS)
 	./tests/joypad_test
 	./tests/mbc_test
 	./tests/timing_test
 	./tests/frame_sync_test
+	./tests/cgb_init_test
+	./tests/cgb_banking_test
+	./tests/cgb_palette_test
 
 .PHONY: all clean test

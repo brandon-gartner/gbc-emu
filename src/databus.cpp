@@ -93,9 +93,17 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF0F) {
         return emu->cpu->interrupt_flags | 0xE0;
     }
-    // ppu registers (0xFF40 - 0xFF4B)
-    if (address >= 0xFF40 && address <= 0xFF4B) {
+    // ppu registers (0xff40 - 0xff4b, 0xff4f)
+    if ((address >= 0xFF40 && address <= 0xFF4B) || address == 0xFF4F) {
         return emu->vid->read_reg(address);
+    }
+    // cgb palette registers (0xff68 - 0xff6b)
+    if (address >= 0xFF68 && address <= 0xFF6B) {
+        return emu->vid->read_reg(address);
+    }
+    // wram bank register (svbk, 0xff70)
+    if (address == 0xFF70) {
+        return emu->is_cgb_mode() ? emu->mem->get_svbk() : 0xFF;
     }
     return io[address - 0xFF00];
 }
@@ -116,9 +124,21 @@ void databus::io_write(uint16_t address, uint8_t value) {
         emu->cpu->interrupt_flags = value;
         return;
     }
-    // ppu registers (0xFF40 - 0xFF4B)
-    if (address >= 0xFF40 && address <= 0xFF4B) {
+    // ppu registers (0xff40 - 0xff4b, 0xff4f)
+    if ((address >= 0xFF40 && address <= 0xFF4B) || address == 0xFF4F) {
         emu->vid->write_reg(address, value);
+        return;
+    }
+    // cgb palette registers (0xff68 - 0xff6b)
+    if (address >= 0xFF68 && address <= 0xFF6B) {
+        emu->vid->write_reg(address, value);
+        return;
+    }
+    // wram bank register (svbk, 0xff70)
+    if (address == 0xFF70) {
+        if (emu->is_cgb_mode()) {
+            emu->mem->set_svbk(value);
+        }
         return;
     }
     // serial transfer for test rom output

@@ -34,6 +34,7 @@ class processor {
     void set_flag_c(bool);
 
     processor(emulator* emu);
+    void init_registers(bool cgb);
     uint16_t get_reg(register_type);
     void set_reg(register_type, bool, int);
 

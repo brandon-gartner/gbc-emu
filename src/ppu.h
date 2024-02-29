@@ -13,10 +13,18 @@ class ppu {
     void tick(int cycles);
     uint8_t read_vram(uint16_t offset);
     void write_vram(uint16_t offset, uint8_t value);
+    uint8_t read_vram(uint16_t offset, uint8_t bank) const;
+    uint8_t get_vram_bank() const { return vram_bank; }
+    void set_vram_bank(uint8_t bank) { vram_bank = bank & 0x01; }
     uint8_t read_oam(uint16_t offset);
     void write_oam(uint16_t offset, uint8_t value);
     uint8_t read_reg(uint16_t address);
     void write_reg(uint16_t address, uint8_t value);
+    void reset_cgb_palettes();
+    uint32_t get_cgb_color(bool is_obj, uint8_t palette_num, uint8_t color_num) const;
+    uint8_t read_cram(bool is_obj, uint8_t offset) const {
+        return (offset < 64) ? (is_obj ? obj_cram[offset] : bg_cram[offset]) : 0xFF;
+    }
 
     const uint32_t* get_framebuffer() const { return framebuffer; }
     bool is_frame_ready() const { return frame_ready; }
@@ -24,7 +32,12 @@ class ppu {
 
    private:
     emulator* emu;
-    uint8_t vram[0x2000];
+    uint8_t vram[2][0x2000];
+    uint8_t vram_bank;
+    uint8_t bg_cram[64];
+    uint8_t obj_cram[64];
+    uint8_t bcps;
+    uint8_t ocps;
     uint8_t oam[0xA0];
     uint32_t framebuffer[160 * 144];
     bool frame_ready;

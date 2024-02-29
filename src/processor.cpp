@@ -4,10 +4,40 @@
 #include "interrupt.h"
 
 processor::processor(emulator *emu) : emu(emu), reg_pc(0), fetch_result(0), destination_address(0), destination_is_memory(false), opcode(0), current(nullptr), reg_a(0), reg_f(0), reg_b(0), reg_c(0), reg_d(0), reg_e(0), reg_h(0), reg_l(0), reg_sp(0) {
+    init_registers(false);
+}
+
+void processor::init_registers(bool cgb) {
     processor_status = running;
-    reg_pc = 0x100;
+    reg_pc = 0x0100;
+    reg_sp = 0xFFFE;
     fetch_result = 0;
-    reg_a = 0x01;
+    destination_address = 0;
+    destination_is_memory = false;
+    opcode = 0;
+    current = nullptr;
+
+    if (cgb) {
+        // cgb power-up register state
+        reg_a = 0x11;
+        reg_f = 0x80;
+        reg_b = 0x00;
+        reg_c = 0x00;
+        reg_d = 0xFF;
+        reg_e = 0x56;
+        reg_h = 0x00;
+        reg_l = 0x0D;
+    } else {
+        // dmg power-up register state
+        reg_a = 0x01;
+        reg_f = 0xB0;
+        reg_b = 0x00;
+        reg_c = 0x13;
+        reg_d = 0x00;
+        reg_e = 0xD8;
+        reg_h = 0x01;
+        reg_l = 0x4D;
+    }
 }
 
 int processor::step() {

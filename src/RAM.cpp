@@ -5,6 +5,8 @@ ram::ram() {
     std::memset(wram, 0, sizeof(wram));
     std::memset(hram, 0, sizeof(hram));
     interrupt = 0;
+    svbk = 1;
+    wram_bank = 1;
 }
 
 uint8_t ram::wram_read(uint16_t address) {
@@ -12,7 +14,10 @@ uint8_t ram::wram_read(uint16_t address) {
         std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
         exit(1);
     }
-    return wram[address - 0xC000];
+    if (address < 0xD000) {
+        return wram[0][address - 0xC000];
+    }
+    return wram[wram_bank][address - 0xD000];
 }
 
 void ram::wram_write(uint16_t address, uint8_t value) {
@@ -20,7 +25,16 @@ void ram::wram_write(uint16_t address, uint8_t value) {
         std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
         exit(1);
     }
-    wram[address - 0xC000] = value;
+    if (address < 0xD000) {
+        wram[0][address - 0xC000] = value;
+    } else {
+        wram[wram_bank][address - 0xD000] = value;
+    }
+}
+
+void ram::set_svbk(uint8_t value) {
+    svbk = value & 0x07;
+    wram_bank = (svbk == 0) ? 1 : svbk;
 }
 
 uint8_t ram::hram_read(uint16_t address) {

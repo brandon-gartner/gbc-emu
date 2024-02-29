@@ -30,7 +30,12 @@ bool cartridge::load_cartridge(char** argv) {
     file.seekg(0x134);
     char game_title_chars[16] = {0};
     file.read(game_title_chars, 16);
-    this->game_title = std::string(game_title_chars, 16);
+
+    file.seekg(0x143);
+    file.read((char*)&this->cgb_flag, 1);
+
+    int title_len = (this->cgb_flag & 0x80) ? 15 : 16;
+    this->game_title = std::string(game_title_chars, title_len);
 
     file.seekg(0x144);
     file.read((char*)&this->new_publisher_code, 2);
@@ -149,6 +154,7 @@ cartridge::cartridge() {
     this->banking_mode = 0;
     this->ram_size_bytes = 0;
     this->total_rom_banks = 2;
+    this->cgb_flag = 0;
     std::memset(this->rtc_regs, 0, sizeof(this->rtc_regs));
     std::memset(this->rtc_latched, 0, sizeof(this->rtc_latched));
     this->rtc_latch_prep = 0xFF;
@@ -472,6 +478,13 @@ void cartridge::print_cartridge_info() {
     std::cout << "Cartridge type: " << this->cartridge_type << std::endl;
     std::cout << "ROM size: " << this->rom_size << std::endl;
     std::cout << "Destination: " << this->destination << std::endl;
+    if (this->cgb_flag == 0xC0) {
+        std::cout << "CGB support: CGB only" << std::endl;
+    } else if (this->cgb_flag & 0x80) {
+        std::cout << "CGB support: dual (DMG/CGB)" << std::endl;
+    } else {
+        std::cout << "CGB support: DMG only" << std::endl;
+    }
     std::cout << "Valid: " << (this->valid ? "true" : "false") << std::endl;
     print_header_hex();
     std::cout << "======================================================================" << std::endl;

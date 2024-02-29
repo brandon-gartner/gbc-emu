@@ -21,6 +21,7 @@ emulator::emulator() {
     this->disp = new display();
     this->main_mode = emulator::status::running;
     this->current = emulator::status::stopped;
+    this->is_cgb = false;
 }
 
 emulator::~emulator() {
@@ -50,6 +51,7 @@ int emulator::run(int argc, char **argv) {
         return 1;
     }
     std::cout << "ROM file loaded successfully." << std::endl;
+    this->init_hardware_mode(this->cart->is_cgb());
 
     this->current = emulator::status::running;
     return this->start();
@@ -84,6 +86,20 @@ emulator::status emulator::get_status() {
 
 void emulator::set_status(emulator::status new_status) {
     this->current = new_status;
+}
+
+void emulator::init_hardware_mode(bool cgb) {
+    this->is_cgb = cgb;
+    if (this->cpu) {
+        this->cpu->init_registers(cgb);
+    }
+    if (this->vid) {
+        this->vid->set_vram_bank(0);
+        this->vid->reset_cgb_palettes();
+    }
+    if (this->mem) {
+        this->mem->set_svbk(1);
+    }
 }
 
 int emulator::add_cycles(int cycles) {

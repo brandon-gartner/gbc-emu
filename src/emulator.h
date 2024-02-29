@@ -40,6 +40,9 @@ class emulator {
     int add_cycles(int cycles);
     emulator::status get_status();
     void set_status(emulator::status new_status);
+    bool is_cgb;
+    bool is_cgb_mode() const { return is_cgb; }
+    void init_hardware_mode(bool cgb);
 
    private:
     status current;

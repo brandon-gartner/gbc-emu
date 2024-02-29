@@ -20,7 +20,7 @@ class cartridge {
     uint8_t nintendo_logo[48];
     uint8_t game_title_code[16];
     // uint8_t manufacturer_code;
-    // uint8_t gbc_enabled;
+    uint8_t cgb_flag;
     uint16_t new_publisher_code;
     uint8_t sgb_enabled;
     uint8_t cartridge_type_code;
@@ -57,6 +57,10 @@ class cartridge {
     bool verify_header_checksum(bool debug);
     uint8_t read_cart(uint16_t);
     bool write_cart(uint8_t, uint16_t);
+    uint8_t get_cgb_flag() const { return cgb_flag; }
+    void set_cgb_flag(uint8_t flag) { cgb_flag = flag; }
+    bool is_cgb() const { return (cgb_flag & 0x80) != 0; }
+    bool is_cgb_only() const { return cgb_flag == 0xC0; }
 };
 
 #endif
