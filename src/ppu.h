@@ -26,6 +26,16 @@ class ppu {
         return (offset < 64) ? (is_obj ? obj_cram[offset] : bg_cram[offset]) : 0xFF;
     }
 
+    void render_scanline();
+    void set_ly(uint8_t val) { ly = val; }
+    uint8_t get_ly() const { return ly; }
+    void set_lcdc(uint8_t val) { lcdc = val; }
+    uint8_t get_lcdc() const { return lcdc; }
+    void set_scx(uint8_t val) { scx = val; }
+    void set_scy(uint8_t val) { scy = val; }
+    void set_wx(uint8_t val) { wx = val; }
+    void set_wy(uint8_t val) { wy = val; }
+
     const uint32_t* get_framebuffer() const { return framebuffer; }
     bool is_frame_ready() const { return frame_ready; }
     void clear_frame_ready() { frame_ready = false; }
@@ -63,10 +73,9 @@ class ppu {
     void check_lyc();
     void start_dma(uint8_t value);
 
-    void render_scanline();
-    void render_bg(uint8_t* scanline_color_ids);
-    void render_window(uint8_t* scanline_color_ids);
-    void render_sprites(uint8_t* scanline_color_ids);
+    void render_bg(uint8_t* scanline_color_ids, bool* scanline_bg_priority);
+    void render_window(uint8_t* scanline_color_ids, bool* scanline_bg_priority);
+    void render_sprites(uint8_t* scanline_color_ids, const bool* scanline_bg_priority);
     uint32_t get_dmg_color(uint8_t shade);
 };
 

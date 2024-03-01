@@ -359,24 +359,28 @@ void ppu::render_scanline() {
     }
 
     uint8_t scanline_color_ids[160] = {0};
+    bool scanline_bg_priority[160] = {false};
 
-    this->render_bg(scanline_color_ids);
-    this->render_window(scanline_color_ids);
-    this->render_sprites(scanline_color_ids);
+    this->render_bg(scanline_color_ids, scanline_bg_priority);
+    this->render_window(scanline_color_ids, scanline_bg_priority);
+    this->render_sprites(scanline_color_ids, scanline_bg_priority);
 }
 
-void ppu::render_bg(uint8_t* scanline_color_ids) {
-    // LCDC bit 0: BG & Window display enable
-    if (!(this->lcdc & 0x01)) {
+void ppu::render_bg(uint8_t* scanline_color_ids, bool* scanline_bg_priority) {
+    bool is_cgb = this->emu && this->emu->is_cgb_mode();
+
+    // in dmg mode, lcdc bit 0 disables bg & window display
+    if (!is_cgb && !(this->lcdc & 0x01)) {
         uint32_t blank = get_dmg_color(0);
         for (int x = 0; x < 160; x++) {
             this->framebuffer[this->ly * 160 + x] = blank;
             scanline_color_ids[x] = 0;
+            scanline_bg_priority[x] = false;
         }
         return;
     }
 
-    // BG tile map select: LCDC bit 3 (0 = 0x9800 -> offset 0x1800, 1 = 0x9C00 -> offset 0x1C00)
+    // bg tile map select: lcdc bit 3 (0 = 0x9800 -> offset 0x1800, 1 = 0x9C00 -> offset 0x1C00)
     uint16_t map_offset = (this->lcdc & 0x08) ? 0x1C00 : 0x1800;
     bool unsigned_tiles = (this->lcdc & 0x10) != 0;
 
@@ -392,33 +396,49 @@ void ppu::render_bg(uint8_t* scanline_color_ids) {
         uint16_t map_addr = map_offset + tile_row + tile_col;
         uint8_t tile_num = this->vram[0][map_addr];
 
+        uint8_t attr = is_cgb ? this->vram[1][map_addr] : 0;
+        uint8_t bank = (is_cgb && (attr & 0x08)) ? 1 : 0;
+        bool x_flip = is_cgb && (attr & 0x20);
+        bool y_flip = is_cgb && (attr & 0x40);
+        bool bg_priority = is_cgb && (attr & 0x80);
+
+        uint8_t eff_y = y_flip ? (7 - tile_y) : tile_y;
         uint16_t tile_data_offset = 0;
         if (unsigned_tiles) {
-            tile_data_offset = ((uint16_t)tile_num) * 16 + tile_y * 2;
+            tile_data_offset = ((uint16_t)tile_num) * 16 + eff_y * 2;
         } else {
-            tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + tile_y * 2;
+            tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + eff_y * 2;
         }
 
-        uint8_t byte1 = this->vram[0][tile_data_offset];
-        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
+        uint8_t byte1 = this->vram[bank][tile_data_offset];
+        uint8_t byte2 = this->vram[bank][tile_data_offset + 1];
 
-        int bit_idx = 7 - tile_x;
+        int bit_idx = x_flip ? tile_x : (7 - tile_x);
         uint8_t color_id = (((byte2 >> bit_idx) & 1) << 1) | ((byte1 >> bit_idx) & 1);
 
         scanline_color_ids[x] = color_id;
-        uint8_t shade = (this->bgp >> (color_id * 2)) & 0x03;
-        this->framebuffer[this->ly * 160 + x] = get_dmg_color(shade);
+        scanline_bg_priority[x] = bg_priority;
+
+        if (is_cgb) {
+            uint8_t pal = attr & 0x07;
+            this->framebuffer[this->ly * 160 + x] = this->get_cgb_color(false, pal, color_id);
+        } else {
+            uint8_t shade = (this->bgp >> (color_id * 2)) & 0x03;
+            this->framebuffer[this->ly * 160 + x] = get_dmg_color(shade);
+        }
     }
 }
 
-void ppu::render_window(uint8_t* scanline_color_ids) {
-    // LCDC bit 5: Window enable
+void ppu::render_window(uint8_t* scanline_color_ids, bool* scanline_bg_priority) {
+    // lcdc bit 5: window enable
     if (!(this->lcdc & 0x20)) {
         return;
     }
 
-    // LCDC bit 0: BG & Window display enable
-    if (!(this->lcdc & 0x01)) {
+    bool is_cgb = this->emu && this->emu->is_cgb_mode();
+
+    // in dmg mode, lcdc bit 0 disables bg & window display
+    if (!is_cgb && !(this->lcdc & 0x01)) {
         return;
     }
 
@@ -431,7 +451,7 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
         return;
     }
 
-    // Window tile map select: LCDC bit 6 (0 = 0x9800 -> offset 0x1800, 1 = 0x9C00 -> offset 0x1C00)
+    // window tile map select: lcdc bit 6 (0 = 0x9800 -> offset 0x1800, 1 = 0x9C00 -> offset 0x1C00)
     uint16_t map_offset = (this->lcdc & 0x40) ? 0x1C00 : 0x1800;
     bool unsigned_tiles = (this->lcdc & 0x10) != 0;
 
@@ -448,34 +468,49 @@ void ppu::render_window(uint8_t* scanline_color_ids) {
         uint16_t map_addr = map_offset + tile_row + tile_col;
         uint8_t tile_num = this->vram[0][map_addr];
 
+        uint8_t attr = is_cgb ? this->vram[1][map_addr] : 0;
+        uint8_t bank = (is_cgb && (attr & 0x08)) ? 1 : 0;
+        bool x_flip = is_cgb && (attr & 0x20);
+        bool y_flip = is_cgb && (attr & 0x40);
+        bool bg_priority = is_cgb && (attr & 0x80);
+
+        uint8_t eff_y = y_flip ? (7 - tile_y) : tile_y;
         uint16_t tile_data_offset = 0;
         if (unsigned_tiles) {
-            tile_data_offset = ((uint16_t)tile_num) * 16 + tile_y * 2;
+            tile_data_offset = ((uint16_t)tile_num) * 16 + eff_y * 2;
         } else {
-            tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + tile_y * 2;
+            tile_data_offset = 0x1000 + ((int16_t)(int8_t)tile_num) * 16 + eff_y * 2;
         }
 
-        uint8_t byte1 = this->vram[0][tile_data_offset];
-        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
+        uint8_t byte1 = this->vram[bank][tile_data_offset];
+        uint8_t byte2 = this->vram[bank][tile_data_offset + 1];
 
-        int bit_idx = 7 - tile_x;
+        int bit_idx = x_flip ? tile_x : (7 - tile_x);
         uint8_t color_id = (((byte2 >> bit_idx) & 1) << 1) | ((byte1 >> bit_idx) & 1);
 
         scanline_color_ids[x] = color_id;
-        uint8_t shade = (this->bgp >> (color_id * 2)) & 0x03;
-        this->framebuffer[this->ly * 160 + x] = get_dmg_color(shade);
+        scanline_bg_priority[x] = bg_priority;
+
+        if (is_cgb) {
+            uint8_t pal = attr & 0x07;
+            this->framebuffer[this->ly * 160 + x] = this->get_cgb_color(false, pal, color_id);
+        } else {
+            uint8_t shade = (this->bgp >> (color_id * 2)) & 0x03;
+            this->framebuffer[this->ly * 160 + x] = get_dmg_color(shade);
+        }
     }
 
     // increment internal window line counter only when window is rendered
     this->window_line_counter++;
 }
 
-void ppu::render_sprites(uint8_t* scanline_color_ids) {
-    // LCDC bit 1: OBJ enable
+void ppu::render_sprites(uint8_t* scanline_color_ids, const bool* scanline_bg_priority) {
+    // lcdc bit 1: obj enable
     if (!(this->lcdc & 0x02)) {
         return;
     }
 
+    bool is_cgb = this->emu && this->emu->is_cgb_mode();
     int sprite_height = (this->lcdc & 0x04) ? 16 : 8;
 
     struct sprite_entry {
@@ -500,13 +535,16 @@ void ppu::render_sprites(uint8_t* scanline_color_ids) {
         }
     }
 
-    // Sort visible sprites by DMG priority: smaller X first; equal X: smaller OAM index first.
-    std::sort(visible_sprites, visible_sprites + sprite_count, [](const sprite_entry& a, const sprite_entry& b) {
-        if (a.x != b.x) {
-            return a.x < b.x;
-        }
-        return a.oam_idx < b.oam_idx;
-    });
+    // sort visible sprites by dmg priority if not cgb: smaller x first, tie-break smaller oam index
+    // in cgb mode: priority is strictly oam index (already ascending order)
+    if (!is_cgb) {
+        std::sort(visible_sprites, visible_sprites + sprite_count, [](const sprite_entry& a, const sprite_entry& b) {
+            if (a.x != b.x) {
+                return a.x < b.x;
+            }
+            return a.oam_idx < b.oam_idx;
+        });
+    }
 
     bool sprite_drawn[160] = {false};
 
@@ -515,7 +553,7 @@ void ppu::render_sprites(uint8_t* scanline_color_ids) {
 
         int sprite_row = this->ly - spr.y;
         if (spr.flags & 0x40) {
-            // Y-flip
+            // y-flip
             sprite_row = sprite_height - 1 - sprite_row;
         }
 
@@ -524,12 +562,12 @@ void ppu::render_sprites(uint8_t* scanline_color_ids) {
             tile_index &= 0xFE;
         }
 
+        uint8_t bank = (is_cgb && (spr.flags & 0x08)) ? 1 : 0;
         uint16_t tile_data_offset = ((uint16_t)tile_index) * 16 + sprite_row * 2;
-        uint8_t byte1 = this->vram[0][tile_data_offset];
-        uint8_t byte2 = this->vram[0][tile_data_offset + 1];
+        uint8_t byte1 = this->vram[bank][tile_data_offset];
+        uint8_t byte2 = this->vram[bank][tile_data_offset + 1];
 
-        uint8_t palette = (spr.flags & 0x10) ? this->obp1 : this->obp0;
-        bool bg_priority = (spr.flags & 0x80) != 0;
+        bool obj_bg_priority = (spr.flags & 0x80) != 0;
         bool x_flip = (spr.flags & 0x20) != 0;
 
         for (int px = 0; px < 8; px++) {
@@ -549,16 +587,38 @@ void ppu::render_sprites(uint8_t* scanline_color_ids) {
                 continue;
             }
 
-            // Non-transparent pixel takes this X position for sprite priority
+            // non-transparent pixel claims this x position for sprite priority
             sprite_drawn[screen_x] = true;
 
-            // If BG priority is set and BG is not color 0, BG covers sprite
-            if (bg_priority && scanline_color_ids[screen_x] != 0) {
+            // priority resolution against background
+            bool bg_covers_sprite = false;
+            if (is_cgb) {
+                if (this->lcdc & 0x01) {
+                    // master priority active: bg covers sprite if bg color != 0 and (bg attr priority or obj priority)
+                    if (scanline_color_ids[screen_x] != 0 && (scanline_bg_priority[screen_x] || obj_bg_priority)) {
+                        bg_covers_sprite = true;
+                    }
+                }
+                // if lcdc bit 0 is 0 in cgb mode, sprites always display on top of bg/window
+            } else {
+                // dmg mode: obj priority bit hides sprite behind bg colors 1-3
+                if (obj_bg_priority && scanline_color_ids[screen_x] != 0) {
+                    bg_covers_sprite = true;
+                }
+            }
+
+            if (bg_covers_sprite) {
                 continue;
             }
 
-            uint8_t shade = (palette >> (color_id * 2)) & 0x03;
-            this->framebuffer[this->ly * 160 + screen_x] = get_dmg_color(shade);
+            if (is_cgb) {
+                uint8_t pal = spr.flags & 0x07;
+                this->framebuffer[this->ly * 160 + screen_x] = this->get_cgb_color(true, pal, color_id);
+            } else {
+                uint8_t palette = (spr.flags & 0x10) ? this->obp1 : this->obp0;
+                uint8_t shade = (palette >> (color_id * 2)) & 0x03;
+                this->framebuffer[this->ly * 160 + screen_x] = get_dmg_color(shade);
+            }
         }
     }
 }
