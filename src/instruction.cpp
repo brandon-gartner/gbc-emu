@@ -34,6 +34,7 @@ int instruction::execute() {
             rrca();
             break;
         case STOP:
+            stop();
             break;
         case RLA:
             rla();
@@ -508,6 +509,16 @@ void instruction::cp() {
 
 void instruction::halt() {
     cpu->processor_status = processor::stopped;
+}
+
+void instruction::stop() {
+    // on CGB, an armed STOP triggers a speed switch
+    if (cpu && cpu->emu && cpu->emu->is_cgb_mode()) {
+        if (cpu->is_speed_switch_prepared()) {
+            cpu->switch_speed();
+            return;
+        }
+    }
 }
 
 const uint8_t instruction::opcode_cycles[256] = {

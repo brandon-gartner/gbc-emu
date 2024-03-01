@@ -5,6 +5,7 @@
 #include "databus.h"
 #include "emulator.h"
 #include "interrupt.h"
+#include "processor.h"
 
 ppu::ppu(emulator* emu) : emu(emu) {
     std::memset(this->vram, 0, sizeof(this->vram));
@@ -89,8 +90,11 @@ void ppu::tick(int cycles) {
         return;
     }
 
-    // 4 t-cycles per m-cycle
-    this->scanline_counter += cycles * 4;
+    // in double speed mode, 1 CPU M-cycle = 2 PPU T-cycles; in normal speed, 1 M-cycle = 4 T-cycles
+    int t_cycles = (this->emu && this->emu->is_cgb_mode() && this->emu->cpu && this->emu->cpu->is_double_speed())
+                       ? (cycles * 2)
+                       : (cycles * 4);
+    this->scanline_counter += t_cycles;
 
     while (this->scanline_counter >= 456) {
         this->scanline_counter -= 456;

@@ -64,6 +64,7 @@ class instruction {
     void run_or();
     void cp();
     void halt();
+    void stop();
     void cb();
     void bit(int, int);
     void res(int, int);

@@ -48,6 +48,12 @@ class processor {
     void set_reg_8(register_type, uint8_t);
     void set_reg_16(register_type, uint16_t);
 
+    bool is_double_speed() const { return double_speed; }
+    bool is_speed_switch_prepared() const { return speed_switch_prepared; }
+    uint8_t read_key1() const;
+    void write_key1(uint8_t value);
+    void switch_speed();
+
     uint16_t fetch_result;
     uint16_t destination_address;
     bool destination_is_memory;
@@ -68,6 +74,8 @@ class processor {
     uint16_t reg_sp;
 
    private:
+    bool double_speed;
+    bool speed_switch_prepared;
 };
 
 #endif

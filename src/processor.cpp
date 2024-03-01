@@ -3,7 +3,25 @@
 #include "instruction.h"
 #include "interrupt.h"
 
-processor::processor(emulator *emu) : emu(emu), reg_pc(0), fetch_result(0), destination_address(0), destination_is_memory(false), opcode(0), current(nullptr), reg_a(0), reg_f(0), reg_b(0), reg_c(0), reg_d(0), reg_e(0), reg_h(0), reg_l(0), reg_sp(0) {
+processor::processor(emulator *emu)
+    : emu(emu),
+      reg_pc(0),
+      fetch_result(0),
+      destination_address(0),
+      destination_is_memory(false),
+      opcode(0),
+      current(nullptr),
+      reg_a(0),
+      reg_f(0),
+      reg_b(0),
+      reg_c(0),
+      reg_d(0),
+      reg_e(0),
+      reg_h(0),
+      reg_l(0),
+      reg_sp(0),
+      double_speed(false),
+      speed_switch_prepared(false) {
     init_registers(false);
 }
 
@@ -16,6 +34,8 @@ void processor::init_registers(bool cgb) {
     destination_is_memory = false;
     opcode = 0;
     current = nullptr;
+    double_speed = false;
+    speed_switch_prepared = false;
 
     if (cgb) {
         // cgb power-up register state
@@ -415,4 +435,21 @@ void processor::set_reg(register_type type, bool sixteen_bit, int new_val) {
     } else {
         set_reg_8(type, new_val);
     }
+}
+
+uint8_t processor::read_key1() const {
+    // bit 7: current speed (0=normal, 1=double)
+    // bits 1-6: unused, always read 1 (0x7E)
+    // bit 0: prepare speed switch flag
+    return (double_speed ? 0x80 : 0x00) | 0x7E | (speed_switch_prepared ? 0x01 : 0x00);
+}
+
+void processor::write_key1(uint8_t value) {
+    // only bit 0 is writable
+    speed_switch_prepared = (value & 0x01) != 0;
+}
+
+void processor::switch_speed() {
+    double_speed = !double_speed;
+    speed_switch_prepared = false;
 }

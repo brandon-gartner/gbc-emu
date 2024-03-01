@@ -97,6 +97,10 @@ uint8_t databus::io_read(uint16_t address) {
     if ((address >= 0xFF40 && address <= 0xFF4B) || address == 0xFF4F) {
         return emu->vid->read_reg(address);
     }
+    // key1 speed switch register (0xFF4D)
+    if (address == 0xFF4D) {
+        return emu->is_cgb_mode() ? emu->cpu->read_key1() : 0xFF;
+    }
     // cgb palette registers (0xff68 - 0xff6b)
     if (address >= 0xFF68 && address <= 0xFF6B) {
         return emu->vid->read_reg(address);
@@ -127,6 +131,13 @@ void databus::io_write(uint16_t address, uint8_t value) {
     // ppu registers (0xff40 - 0xff4b, 0xff4f)
     if ((address >= 0xFF40 && address <= 0xFF4B) || address == 0xFF4F) {
         emu->vid->write_reg(address, value);
+        return;
+    }
+    // key1 speed switch register (0xFF4D)
+    if (address == 0xFF4D) {
+        if (emu->is_cgb_mode()) {
+            emu->cpu->write_key1(value);
+        }
         return;
     }
     // cgb palette registers (0xff68 - 0xff6b)
