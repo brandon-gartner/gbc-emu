@@ -59,7 +59,15 @@ int emulator::run(int argc, char **argv) {
 
 int emulator::start() {
     if (this->disp) {
-        if (!this->disp->init("gbc-emu", 3)) {
+        std::string title = "gbc-emu";
+        if (this->cart && this->cart->valid && !this->cart->game_title.empty()) {
+            std::string cart_title = this->cart->game_title.c_str();
+            if (!cart_title.empty()) {
+                title += " - " + cart_title;
+            }
+        }
+        title += this->is_cgb ? " [GBC]" : " [GB]";
+        if (!this->disp->init(title.c_str(), 3)) {
             std::cout << "Warning: Display initialization failed. Running without display." << std::endl;
         }
     }
@@ -96,6 +104,7 @@ void emulator::init_hardware_mode(bool cgb) {
     if (this->vid) {
         this->vid->set_vram_bank(0);
         this->vid->reset_cgb_palettes();
+        this->vid->reset_cgb_hdma();
     }
     if (this->mem) {
         this->mem->set_svbk(1);
