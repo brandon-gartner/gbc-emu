@@ -27,7 +27,10 @@ class ppu {
     }
 
     void render_scanline();
-    void set_ly(uint8_t val) { ly = val; }
+    void set_ly(uint8_t val) {
+        ly = val;
+        scanline_rendered = false;
+    }
     uint8_t get_ly() const { return ly; }
     void set_lcdc(uint8_t val) { lcdc = val; }
     uint8_t get_lcdc() const { return lcdc; }
@@ -35,6 +38,14 @@ class ppu {
     void set_scy(uint8_t val) { scy = val; }
     void set_wx(uint8_t val) { wx = val; }
     void set_wy(uint8_t val) { wy = val; }
+
+    void reset_cgb_hdma();
+    void run_gdma(uint8_t blocks);
+    void step_hdma();
+    bool is_hdma_active() const { return hdma_active; }
+    uint16_t get_hdma_source() const { return hdma_source; }
+    uint16_t get_hdma_dest() const { return hdma_dest; }
+    uint8_t get_hdma_blocks_remaining() const { return hdma_blocks_remaining; }
 
     const uint32_t* get_framebuffer() const { return framebuffer; }
     bool is_frame_ready() const { return frame_ready; }
@@ -48,6 +59,11 @@ class ppu {
     uint8_t obj_cram[64];
     uint8_t bcps;
     uint8_t ocps;
+    uint16_t hdma_source;
+    uint16_t hdma_dest;
+    uint8_t hdma_blocks_remaining;
+    bool hdma_active;
+    bool scanline_rendered;
     uint8_t oam[0xA0];
     uint32_t framebuffer[160 * 144];
     bool frame_ready;

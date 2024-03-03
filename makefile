@@ -28,7 +28,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 clean:
-	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test tests/cgb_init_test tests/cgb_banking_test tests/cgb_palette_test tests/cgb_render_test tests/cgb_speed_test
+	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test tests/cgb_init_test tests/cgb_banking_test tests/cgb_palette_test tests/cgb_render_test tests/cgb_speed_test tests/cgb_dma_test
 
 test: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/joypad_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/joypad_test $(LDFLAGS)
@@ -40,6 +40,7 @@ test: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_palette_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_palette_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_render_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_render_test $(LDFLAGS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_speed_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_speed_test $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -Isrc tests/cgb_dma_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/cgb_dma_test $(LDFLAGS)
 	./tests/joypad_test
 	./tests/mbc_test
 	./tests/timing_test
@@ -49,5 +50,6 @@ test: $(OBJECTS)
 	./tests/cgb_palette_test
 	./tests/cgb_render_test
 	./tests/cgb_speed_test
+	./tests/cgb_dma_test
 
 .PHONY: all clean test

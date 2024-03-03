@@ -101,6 +101,10 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF4D) {
         return emu->is_cgb_mode() ? emu->cpu->read_key1() : 0xFF;
     }
+    // cgb hdma registers (0xFF51 - 0xFF55)
+    if (address >= 0xFF51 && address <= 0xFF55) {
+        return emu->vid->read_reg(address);
+    }
     // cgb palette registers (0xff68 - 0xff6b)
     if (address >= 0xFF68 && address <= 0xFF6B) {
         return emu->vid->read_reg(address);
@@ -138,6 +142,11 @@ void databus::io_write(uint16_t address, uint8_t value) {
         if (emu->is_cgb_mode()) {
             emu->cpu->write_key1(value);
         }
+        return;
+    }
+    // cgb hdma registers (0xFF51 - 0xFF55)
+    if (address >= 0xFF51 && address <= 0xFF55) {
+        emu->vid->write_reg(address, value);
         return;
     }
     // cgb palette registers (0xff68 - 0xff6b)

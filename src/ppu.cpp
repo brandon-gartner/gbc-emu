@@ -12,6 +12,7 @@ ppu::ppu(emulator* emu) : emu(emu) {
     std::memset(this->oam, 0, sizeof(this->oam));
     std::memset(this->framebuffer, 0, sizeof(this->framebuffer));
     this->frame_ready = false;
+    this->scanline_rendered = false;
 
     this->lcdc = 0x91;
     this->stat = 0x82;
@@ -30,6 +31,7 @@ ppu::ppu(emulator* emu) : emu(emu) {
     this->window_line_counter = 0;
     this->vram_bank = 0;
     this->reset_cgb_palettes();
+    this->reset_cgb_hdma();
 }
 
 ppu::~ppu() {}
@@ -39,6 +41,41 @@ void ppu::reset_cgb_palettes() {
     std::memset(this->obj_cram, 0xFF, sizeof(this->obj_cram));
     this->bcps = 0;
     this->ocps = 0;
+}
+
+void ppu::reset_cgb_hdma() {
+    this->hdma_source = 0;
+    this->hdma_dest = 0x8000;
+    this->hdma_blocks_remaining = 0;
+    this->hdma_active = false;
+}
+
+void ppu::run_gdma(uint8_t blocks) {
+    int byte_count = blocks * 16;
+    for (int i = 0; i < byte_count; i++) {
+        uint8_t val = this->emu->bus->read8(this->hdma_source);
+        this->write_vram(this->hdma_dest & 0x1FFF, val);
+        this->hdma_source = (this->hdma_source + 1) & 0xFFFF;
+        this->hdma_dest = 0x8000 | (((this->hdma_dest & 0x1FFF) + 1) & 0x1FFF);
+    }
+    this->hdma_active = false;
+    this->hdma_blocks_remaining = 0;
+}
+
+void ppu::step_hdma() {
+    if (!this->hdma_active || this->hdma_blocks_remaining == 0) {
+        return;
+    }
+    for (int i = 0; i < 16; i++) {
+        uint8_t val = this->emu->bus->read8(this->hdma_source);
+        this->write_vram(this->hdma_dest & 0x1FFF, val);
+        this->hdma_source = (this->hdma_source + 1) & 0xFFFF;
+        this->hdma_dest = 0x8000 | (((this->hdma_dest & 0x1FFF) + 1) & 0x1FFF);
+    }
+    this->hdma_blocks_remaining--;
+    if (this->hdma_blocks_remaining == 0) {
+        this->hdma_active = false;
+    }
 }
 
 void ppu::set_mode(uint8_t mode) {
@@ -97,6 +134,14 @@ void ppu::tick(int cycles) {
     this->scanline_counter += t_cycles;
 
     while (this->scanline_counter >= 456) {
+        if (this->ly < 144 && !this->scanline_rendered) {
+            this->set_mode(0);
+            this->render_scanline();
+            if (this->emu && this->emu->is_cgb_mode() && this->hdma_active) {
+                this->step_hdma();
+            }
+        }
+        this->scanline_rendered = false;
         this->scanline_counter -= 456;
         this->ly++;
 
@@ -132,6 +177,10 @@ void ppu::tick(int cycles) {
             if ((this->stat & 0x03) != 0) {
                 this->set_mode(0);  // mode 0: hblank (204 cycles)
                 this->render_scanline();
+                this->scanline_rendered = true;
+                if (this->emu && this->emu->is_cgb_mode() && this->hdma_active) {
+                    this->step_hdma();
+                }
             }
         }
     }
@@ -200,6 +249,24 @@ uint8_t ppu::read_reg(uint16_t address) {
         case 0xFF4F:
             if (this->emu && this->emu->is_cgb_mode()) {
                 return 0xFE | this->vram_bank;
+            }
+            return 0xFF;
+        case 0xFF51:
+        case 0xFF52:
+        case 0xFF53:
+        case 0xFF54:
+            // hdma1-4 are write-only, always return 0xFF
+            return 0xFF;
+        case 0xFF55:
+            // hdma5: vram dma length/mode/start
+            if (this->emu && this->emu->is_cgb_mode()) {
+                if (this->hdma_active) {
+                    return (this->hdma_blocks_remaining - 1) & 0x7F;
+                } else if (this->hdma_blocks_remaining > 0) {
+                    return 0x80 | ((this->hdma_blocks_remaining - 1) & 0x7F);
+                } else {
+                    return 0xFF;
+                }
             }
             return 0xFF;
         case 0xFF68:
@@ -288,6 +355,54 @@ void ppu::write_reg(uint16_t address, uint8_t value) {
         case 0xFF4F:
             if (this->emu && this->emu->is_cgb_mode()) {
                 this->vram_bank = value & 0x01;
+            }
+            break;
+        case 0xFF51:
+            // hdma1: source address high
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->hdma_source = (this->hdma_source & 0x00FF) | ((uint16_t)value << 8);
+            }
+            break;
+        case 0xFF52:
+            // hdma2: source address low (lower 4 bits ignored)
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->hdma_source = (this->hdma_source & 0xFF00) | (value & 0xF0);
+            }
+            break;
+        case 0xFF53:
+            // hdma3: destination address high (forced to 0x8000-0x9FFF)
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->hdma_dest = (this->hdma_dest & 0x00FF) | (((uint16_t)(value & 0x1F) | 0x80) << 8);
+            }
+            break;
+        case 0xFF54:
+            // hdma4: destination address low (lower 4 bits ignored)
+            if (this->emu && this->emu->is_cgb_mode()) {
+                this->hdma_dest = (this->hdma_dest & 0xFF00) | (value & 0xF0);
+            }
+            break;
+        case 0xFF55:
+            // hdma5: length, mode, start
+            if (this->emu && this->emu->is_cgb_mode()) {
+                if (this->hdma_active && !(value & 0x80)) {
+                    // cancel active hdma transfer
+                    this->hdma_active = false;
+                    return;
+                }
+                uint8_t blocks = (value & 0x7F) + 1;
+                if (value & 0x80) {
+                    // hblank dma
+                    if (!(this->lcdc & 0x80)) {
+                        // if lcd is disabled, run as gdma
+                        this->run_gdma(blocks);
+                    } else {
+                        this->hdma_active = true;
+                        this->hdma_blocks_remaining = blocks;
+                    }
+                } else {
+                    // general-purpose dma
+                    this->run_gdma(blocks);
+                }
             }
             break;
         case 0xFF68:
