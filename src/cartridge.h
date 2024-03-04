@@ -47,6 +47,15 @@ class cartridge {
     uint8_t rtc_latch_prep;
     bool has_rtc;
 
+    // mbc helper methods
+    uint8_t read_mbc1(uint16_t address);
+    bool write_mbc1(uint8_t value, uint16_t address);
+    uint8_t read_mbc3(uint16_t address);
+    bool write_mbc3(uint8_t value, uint16_t address);
+    uint8_t read_mbc5(uint16_t address);
+    bool write_mbc5(uint8_t value, uint16_t address);
+    void allocate_ram(uint8_t ram_size_code);
+
    public:
     cartridge();
     ~cartridge();

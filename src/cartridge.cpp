@@ -65,39 +65,8 @@ bool cartridge::load_cartridge(char** argv) {
     file.seekg(0x149);
     file.read((char*)&this->ram_size, 1);
 
-    // allocate cartridge ram if present
-    switch (this->ram_size) {
-        case 0x02:
-            this->ram_size_bytes = 8 * 1024;
-            break;
-        case 0x03:
-            this->ram_size_bytes = 32 * 1024;
-            break;
-        case 0x04:
-            this->ram_size_bytes = 128 * 1024;
-            break;
-        // 0x05 was defined first which is why it's smaller than 0x04, 0x04 came later
-        case 0x05:
-            this->ram_size_bytes = 64 * 1024;
-            break;
-        default:
-            // if cartridge type has ram but header specifies 0, allocate default 8 kb
-            if (this->cartridge_type_code == 0x02 || this->cartridge_type_code == 0x03 ||
-                this->cartridge_type_code == 0x08 || this->cartridge_type_code == 0x09 ||
-                this->cartridge_type_code == 0x0C || this->cartridge_type_code == 0x0D ||
-                this->cartridge_type_code == 0x10 || this->cartridge_type_code == 0x12 ||
-                this->cartridge_type_code == 0x13 || this->cartridge_type_code == 0x1A ||
-                this->cartridge_type_code == 0x1B || this->cartridge_type_code == 0x1D ||
-                this->cartridge_type_code == 0x1E) {
-                this->ram_size_bytes = 8 * 1024;
-            } else {
-                this->ram_size_bytes = 0;
-            }
-            break;
-    }
-    if (this->ram_size_bytes > 0) {
-        this->ram_data = new uint8_t[this->ram_size_bytes]();
-    }
+    // allocate cartridge RAM if present
+    this->allocate_ram(this->ram_size);
 
     // mbc3 cartridges with timer (0x0F and 0x10)
     this->has_rtc = (this->cartridge_type_code == 0x0F || this->cartridge_type_code == 0x10);
@@ -206,130 +175,296 @@ void cartridge::print_beginning_hex() {
     std::cout << std::endl;
 }
 
-uint8_t cartridge::read_cart(uint16_t address) {
-    // rom only cartridge
-    if (this->cartridge_type_code == 0x00) {
+void cartridge::allocate_ram(uint8_t ram_size_code) {
+    switch (ram_size_code) {
+        case 0x02:
+            this->ram_size_bytes = 8 * 1024;
+            break;
+        case 0x03:
+            this->ram_size_bytes = 32 * 1024;
+            break;
+        case 0x04:
+            this->ram_size_bytes = 128 * 1024;
+            break;
+        // 0x05 was defined first which is why it's smaller than 0x04, 0x04 came later
+        case 0x05:
+            this->ram_size_bytes = 64 * 1024;
+            break;
+        default:
+            // if cartridge type has ram but header specifies 0, allocate default 8 kb
+            if (this->cartridge_type_code == 0x02 || this->cartridge_type_code == 0x03 ||
+                this->cartridge_type_code == 0x08 || this->cartridge_type_code == 0x09 ||
+                this->cartridge_type_code == 0x0C || this->cartridge_type_code == 0x0D ||
+                this->cartridge_type_code == 0x10 || this->cartridge_type_code == 0x12 ||
+                this->cartridge_type_code == 0x13 || this->cartridge_type_code == 0x1A ||
+                this->cartridge_type_code == 0x1B || this->cartridge_type_code == 0x1D ||
+                this->cartridge_type_code == 0x1E) {
+                this->ram_size_bytes = 8 * 1024;
+            } else {
+                this->ram_size_bytes = 0;
+            }
+            break;
+    }
+    if (this->ram_size_bytes > 0) {
+        this->ram_data = new uint8_t[this->ram_size_bytes]();
+    }
+}
+
+uint8_t cartridge::read_mbc1(uint16_t address) {
+    // rom bank 00 (0x0000 - 0x3FFF)
+    if (address < 0x4000) {
+        if (this->banking_mode == 1) {
+            int bank = (this->ram_bank << 5) % this->total_rom_banks;
+            uint32_t offset = (bank * 0x4000) + address;
+            if (offset < this->file_size) {
+                return this->file_data[offset];
+            }
+        }
         if (address < this->file_size) {
             return this->file_data[address];
         }
         return 0xFF;
     }
+    // switchable rom bank (0x4000 - 0x7FFF)
+    if (address < 0x8000) {
+        int bank = ((this->ram_bank << 5) | this->rom_bank) % this->total_rom_banks;
+        uint32_t offset = (bank * 0x4000) + (address - 0x4000);
+        if (offset < this->file_size) {
+            return this->file_data[offset];
+        }
+        return 0xFF;
+    }
+    // external ram (0xA000 - 0xBFFF)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+            return 0xFF;
+        }
+        uint32_t ram_offset = 0;
+        if (this->banking_mode == 0) {
+            ram_offset = (address - 0xA000) % this->ram_size_bytes;
+        } else {
+            ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+        }
+        return this->ram_data[ram_offset];
+    }
+    return 0xFF;
+}
 
-    // mbc1 cartridge (0x01: mbc1, 0x02: mbc1+ram, 0x03: mbc1+ram+battery)
-    if (this->cartridge_type_code >= 0x01 && this->cartridge_type_code <= 0x03) {
-        // rom bank 00 (0x0000 - 0x3FFF)
-        if (address < 0x4000) {
-            if (this->banking_mode == 1) {
-                int bank = (this->ram_bank << 5) % this->total_rom_banks;
-                uint32_t offset = (bank * 0x4000) + address;
-                if (offset < this->file_size) {
-                    return this->file_data[offset];
-                }
-            }
-            if (address < this->file_size) {
-                return this->file_data[address];
-            }
-            return 0xFF;
+bool cartridge::write_mbc1(uint8_t value, uint16_t address) {
+    // ram enable (0x0000 - 0x1FFF)
+    if (address < 0x2000) {
+        this->ram_enabled = ((value & 0x0F) == 0x0A);
+        return true;
+    }
+    // rom bank number lower 5 bits (0x2000 - 0x3FFF)
+    if (address < 0x4000) {
+        uint8_t bank = value & 0x1F;
+        if (bank == 0) {
+            bank = 1;
         }
-        // switchable rom bank (0x4000 - 0x7FFF)
-        if (address < 0x8000) {
-            int bank = ((this->ram_bank << 5) | this->rom_bank) % this->total_rom_banks;
-            uint32_t offset = (bank * 0x4000) + (address - 0x4000);
-            if (offset < this->file_size) {
-                return this->file_data[offset];
-            }
-            return 0xFF;
-        }
-        // external ram (0xA000 - 0xBFFF)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
-                return 0xFF;
-            }
+        this->rom_bank = bank;
+        return true;
+    }
+    // ram bank number or upper 2 bits of rom bank (0x4000 - 0x5FFF)
+    if (address < 0x6000) {
+        this->ram_bank = value & 0x03;
+        return true;
+    }
+    // banking mode select (0x6000 - 0x7FFF)
+    if (address < 0x8000) {
+        this->banking_mode = value & 0x01;
+        return true;
+    }
+    // external ram write (0xA000 - 0xBFFF)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
             uint32_t ram_offset = 0;
             if (this->banking_mode == 0) {
                 ram_offset = (address - 0xA000) % this->ram_size_bytes;
             } else {
                 ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
             }
-            return this->ram_data[ram_offset];
+            this->ram_data[ram_offset] = value;
         }
+        return true;
     }
+    return false;
+}
 
-    // mbc3 cartridge (0x0F - 0x13)
-    if (this->cartridge_type_code >= 0x0F && this->cartridge_type_code <= 0x13) {
-        // rom bank 00 (0x0000 - 0x3FFF)
-        if (address < 0x4000) {
-            if (address < this->file_size) {
-                return this->file_data[address];
-            }
-            return 0xFF;
+uint8_t cartridge::read_mbc3(uint16_t address) {
+    // rom bank 00 (0x0000 - 0x3FFF)
+    if (address < 0x4000) {
+        if (address < this->file_size) {
+            return this->file_data[address];
         }
-        // switchable rom bank 01-7F (0x4000 - 0x7FFF)
-        if (address < 0x8000) {
-            uint16_t bank = (this->rom_bank == 0) ? 1 : this->rom_bank;
-            bank %= this->total_rom_banks;
-            uint32_t offset = (bank * 0x4000) + (address - 0x4000);
-            if (offset < this->file_size) {
-                return this->file_data[offset];
-            }
-            return 0xFF;
-        }
-        // external ram / rtc registers (0xA000 - 0xBFFF)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (!this->ram_enabled) {
-                return 0xFF;
-            }
-            // ram bank 0x00 - 0x07
-            if (this->ram_bank <= 0x07) {
-                if (!this->ram_data || this->ram_size_bytes == 0) {
-                    return 0xFF;
-                }
-                uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
-                return this->ram_data[ram_offset];
-            }
-            // rtc registers 0x08 - 0x0C
-            if (this->ram_bank >= 0x08 && this->ram_bank <= 0x0C) {
-                if (this->has_rtc) {
-                    return this->rtc_latched[this->ram_bank - 0x08];
-                }
-            }
-            return 0xFF;
-        }
+        return 0xFF;
     }
-
-    // mbc5 cartridge (0x19 - 0x1E)
-    if (this->cartridge_type_code >= 0x19 && this->cartridge_type_code <= 0x1E) {
-        // rom bank 00 (0x0000 - 0x3FFF)
-        if (address < 0x4000) {
-            if (address < this->file_size) {
-                return this->file_data[address];
-            }
+    // switchable rom bank 01-7F (0x4000 - 0x7FFF)
+    if (address < 0x8000) {
+        uint16_t bank = (this->rom_bank == 0) ? 1 : this->rom_bank;
+        bank %= this->total_rom_banks;
+        uint32_t offset = (bank * 0x4000) + (address - 0x4000);
+        if (offset < this->file_size) {
+            return this->file_data[offset];
+        }
+        return 0xFF;
+    }
+    // external ram / rtc registers (0xA000 - 0xBFFF)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (!this->ram_enabled) {
             return 0xFF;
         }
-        // switchable rom bank 000-1FF (0x4000 - 0x7FFF, bank 0 is valid)
-        if (address < 0x8000) {
-            uint16_t bank = this->rom_bank % this->total_rom_banks;
-            uint32_t offset = (bank * 0x4000) + (address - 0x4000);
-            if (offset < this->file_size) {
-                return this->file_data[offset];
-            }
-            return 0xFF;
-        }
-        // external ram (0xA000 - 0xBFFF, up to 16 banks)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+        // ram bank 0x00 - 0x07
+        if (this->ram_bank <= 0x07) {
+            if (!this->ram_data || this->ram_size_bytes == 0) {
                 return 0xFF;
             }
             uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
             return this->ram_data[ram_offset];
         }
-    }
-
-    // fallback for other cartridges
-    if (address < this->file_size) {
-        return this->file_data[address];
+        // rtc registers 0x08 - 0x0C
+        if (this->ram_bank >= 0x08 && this->ram_bank <= 0x0C) {
+            if (this->has_rtc) {
+                return this->rtc_latched[this->ram_bank - 0x08];
+            }
+        }
+        return 0xFF;
     }
     return 0xFF;
+}
+
+bool cartridge::write_mbc3(uint8_t value, uint16_t address) {
+    // ram and rtc enable (0x0000 - 0x1FFF)
+    if (address < 0x2000) {
+        this->ram_enabled = ((value & 0x0F) == 0x0A);
+        return true;
+    }
+    // rom bank number 7 bits (0x2000 - 0x3FFF)
+    if (address < 0x4000) {
+        uint8_t bank = value & 0x7F;
+        if (bank == 0) {
+            bank = 1;
+        }
+        this->rom_bank = bank;
+        return true;
+    }
+    // ram bank number or rtc register select (0x4000 - 0x5FFF)
+    if (address < 0x6000) {
+        this->ram_bank = value;
+        return true;
+    }
+    // latch clock data (0x6000 - 0x7FFF)
+    if (address < 0x8000) {
+        if (this->has_rtc) {
+            if (this->rtc_latch_prep == 0x00 && value == 0x01) {
+                std::memcpy(this->rtc_latched, this->rtc_regs, sizeof(this->rtc_regs));
+            }
+            this->rtc_latch_prep = value;
+        }
+        return true;
+    }
+    // external ram or rtc write (0xA000 - 0xBFFF)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (this->ram_enabled) {
+            if (this->ram_bank <= 0x07) {
+                if (this->ram_data && this->ram_size_bytes > 0) {
+                    uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+                    this->ram_data[ram_offset] = value;
+                }
+            } else if (this->ram_bank >= 0x08 && this->ram_bank <= 0x0C) {
+                if (this->has_rtc) {
+                    this->rtc_regs[this->ram_bank - 0x08] = value;
+                }
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+uint8_t cartridge::read_mbc5(uint16_t address) {
+    // rom bank 00 (0x0000 - 0x3FFF)
+    if (address < 0x4000) {
+        if (address < this->file_size) {
+            return this->file_data[address];
+        }
+        return 0xFF;
+    }
+    // switchable rom bank 000-1FF (0x4000 - 0x7FFF, bank 0 is valid)
+    if (address < 0x8000) {
+        uint16_t bank = this->rom_bank % this->total_rom_banks;
+        uint32_t offset = (bank * 0x4000) + (address - 0x4000);
+        if (offset < this->file_size) {
+            return this->file_data[offset];
+        }
+        return 0xFF;
+    }
+    // external ram (0xA000 - 0xBFFF, up to 16 banks)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+            return 0xFF;
+        }
+        uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+        return this->ram_data[ram_offset];
+    }
+    return 0xFF;
+}
+
+bool cartridge::write_mbc5(uint8_t value, uint16_t address) {
+    // ram enable (0x0000 - 0x1FFF)
+    if (address < 0x2000) {
+        this->ram_enabled = ((value & 0x0F) == 0x0A);
+        return true;
+    }
+    // rom bank number lower 8 bits (0x2000 - 0x2FFF)
+    if (address < 0x3000) {
+        this->rom_bank = (this->rom_bank & 0x100) | value;
+        return true;
+    }
+    // rom bank number 9th bit (0x3000 - 0x3FFF)
+    if (address < 0x4000) {
+        this->rom_bank = (this->rom_bank & 0x0FF) | (((uint16_t)(value & 0x01)) << 8);
+        return true;
+    }
+    // ram bank number (0x4000 - 0x5FFF)
+    if (address < 0x6000) {
+        this->ram_bank = value & 0x0F;
+        return true;
+    }
+    // unused register area for mbc5 (0x6000 - 0x7FFF)
+    if (address < 0x8000) {
+        return true;
+    }
+    // external ram write (0xA000 - 0xBFFF)
+    if (address >= 0xA000 && address < 0xC000) {
+        if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
+            uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
+            this->ram_data[ram_offset] = value;
+        }
+        return true;
+    }
+    return false;
+}
+
+uint8_t cartridge::read_cart(uint16_t address) {
+    // rom only cartridge
+    if (this->cartridge_type_code == 0x00) {
+        return (address < this->file_size) ? this->file_data[address] : 0xFF;
+    }
+    // mbc1 cartridge (0x01 - 0x03)
+    if (this->cartridge_type_code >= 0x01 && this->cartridge_type_code <= 0x03) {
+        return this->read_mbc1(address);
+    }
+    // mbc3 cartridge (0x0F - 0x13)
+    if (this->cartridge_type_code >= 0x0F && this->cartridge_type_code <= 0x13) {
+        return this->read_mbc3(address);
+    }
+    // mbc5 cartridge (0x19 - 0x1E)
+    if (this->cartridge_type_code >= 0x19 && this->cartridge_type_code <= 0x1E) {
+        return this->read_mbc5(address);
+    }
+    // fallback for other cartridges
+    return (address < this->file_size) ? this->file_data[address] : 0xFF;
 }
 
 bool cartridge::write_cart(uint8_t value, uint16_t address) {
@@ -337,133 +472,18 @@ bool cartridge::write_cart(uint8_t value, uint16_t address) {
     if (this->cartridge_type_code == 0x00) {
         return true;
     }
-
-    // mbc1 cartridge (0x01: mbc1, 0x02: mbc1+ram, 0x03: mbc1+ram+battery)
+    // mbc1 cartridge (0x01 - 0x03)
     if (this->cartridge_type_code >= 0x01 && this->cartridge_type_code <= 0x03) {
-        // ram enable (0x0000 - 0x1FFF)
-        if (address < 0x2000) {
-            this->ram_enabled = ((value & 0x0F) == 0x0A);
-            return true;
-        }
-        // rom bank number lower 5 bits (0x2000 - 0x3FFF)
-        if (address < 0x4000) {
-            uint8_t bank = value & 0x1F;
-            if (bank == 0) {
-                bank = 1;
-            }
-            this->rom_bank = bank;
-            return true;
-        }
-        // ram bank number or upper 2 bits of rom bank (0x4000 - 0x5FFF)
-        if (address < 0x6000) {
-            this->ram_bank = value & 0x03;
-            return true;
-        }
-        // banking mode select (0x6000 - 0x7FFF)
-        if (address < 0x8000) {
-            this->banking_mode = value & 0x01;
-            return true;
-        }
-        // external ram write (0xA000 - 0xBFFF)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
-                uint32_t ram_offset = 0;
-                if (this->banking_mode == 0) {
-                    ram_offset = (address - 0xA000) % this->ram_size_bytes;
-                } else {
-                    ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
-                }
-                this->ram_data[ram_offset] = value;
-            }
-            return true;
-        }
+        return this->write_mbc1(value, address);
     }
-
     // mbc3 cartridge (0x0F - 0x13)
     if (this->cartridge_type_code >= 0x0F && this->cartridge_type_code <= 0x13) {
-        // ram and rtc enable (0x0000 - 0x1FFF)
-        if (address < 0x2000) {
-            this->ram_enabled = ((value & 0x0F) == 0x0A);
-            return true;
-        }
-        // rom bank number 7 bits (0x2000 - 0x3FFF)
-        if (address < 0x4000) {
-            uint8_t bank = value & 0x7F;
-            if (bank == 0) {
-                bank = 1;
-            }
-            this->rom_bank = bank;
-            return true;
-        }
-        // ram bank number or rtc register select (0x4000 - 0x5FFF)
-        if (address < 0x6000) {
-            this->ram_bank = value;
-            return true;
-        }
-        // latch clock data (0x6000 - 0x7FFF)
-        if (address < 0x8000) {
-            if (this->has_rtc) {
-                if (this->rtc_latch_prep == 0x00 && value == 0x01) {
-                    std::memcpy(this->rtc_latched, this->rtc_regs, sizeof(this->rtc_regs));
-                }
-                this->rtc_latch_prep = value;
-            }
-            return true;
-        }
-        // external ram or rtc write (0xA000 - 0xBFFF)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (this->ram_enabled) {
-                if (this->ram_bank <= 0x07) {
-                    if (this->ram_data && this->ram_size_bytes > 0) {
-                        uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
-                        this->ram_data[ram_offset] = value;
-                    }
-                } else if (this->ram_bank >= 0x08 && this->ram_bank <= 0x0C) {
-                    if (this->has_rtc) {
-                        this->rtc_regs[this->ram_bank - 0x08] = value;
-                    }
-                }
-            }
-            return true;
-        }
+        return this->write_mbc3(value, address);
     }
-
     // mbc5 cartridge (0x19 - 0x1E)
     if (this->cartridge_type_code >= 0x19 && this->cartridge_type_code <= 0x1E) {
-        // ram enable (0x0000 - 0x1FFF)
-        if (address < 0x2000) {
-            this->ram_enabled = ((value & 0x0F) == 0x0A);
-            return true;
-        }
-        // rom bank number lower 8 bits (0x2000 - 0x2FFF)
-        if (address < 0x3000) {
-            this->rom_bank = (this->rom_bank & 0x100) | value;
-            return true;
-        }
-        // rom bank number 9th bit (0x3000 - 0x3FFF)
-        if (address < 0x4000) {
-            this->rom_bank = (this->rom_bank & 0x0FF) | (((uint16_t)(value & 0x01)) << 8);
-            return true;
-        }
-        // ram bank number (0x4000 - 0x5FFF)
-        if (address < 0x6000) {
-            this->ram_bank = value & 0x0F;
-            return true;
-        }
-        // unused register area for mbc5 (0x6000 - 0x7FFF)
-        if (address < 0x8000) {
-            return true;
-        }
-        // external ram write (0xA000 - 0xBFFF)
-        if (address >= 0xA000 && address < 0xC000) {
-            if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
-                uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
-                this->ram_data[ram_offset] = value;
-            }
-            return true;
-        }
+        return this->write_mbc5(value, address);
     }
-
     return false;
 }
 

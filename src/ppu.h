@@ -89,6 +89,15 @@ class ppu {
     void check_lyc();
     void start_dma(uint8_t value);
 
+    struct sprite_entry {
+        int oam_idx;
+        int x;
+        int y;
+        uint8_t tile;
+        uint8_t flags;
+    };
+
+    int collect_visible_sprites(sprite_entry* out_sprites, int max_count, int sprite_height);
     void render_bg(uint8_t* scanline_color_ids, bool* scanline_bg_priority);
     void render_window(uint8_t* scanline_color_ids, bool* scanline_bg_priority);
     void render_sprites(uint8_t* scanline_color_ids, const bool* scanline_bg_priority);

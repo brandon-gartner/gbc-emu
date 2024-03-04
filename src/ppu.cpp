@@ -623,8 +623,36 @@ void ppu::render_window(uint8_t* scanline_color_ids, bool* scanline_bg_priority)
     this->window_line_counter++;
 }
 
+int ppu::collect_visible_sprites(sprite_entry* out_sprites, int max_count, int sprite_height) {
+    int count = 0;
+
+    for (int i = 0; i < 40 && count < max_count; i++) {
+        int y = (int)this->oam[i * 4] - 16;
+        int x = (int)this->oam[i * 4 + 1] - 8;
+        uint8_t tile = this->oam[i * 4 + 2];
+        uint8_t flags = this->oam[i * 4 + 3];
+
+        if (this->ly >= y && this->ly < y + sprite_height) {
+            out_sprites[count++] = {i, x, y, tile, flags};
+        }
+    }
+
+    // sort visible sprites by DMG priority if not CGB: smaller x first, tie-break smaller OAM index
+    // in CGB mode: priority is strictly OAM index (already ascending order)
+    if (!(this->emu && this->emu->is_cgb_mode())) {
+        std::sort(out_sprites, out_sprites + count, [](const sprite_entry& a, const sprite_entry& b) {
+            if (a.x != b.x) {
+                return a.x < b.x;
+            }
+            return a.oam_idx < b.oam_idx;
+        });
+    }
+
+    return count;
+}
+
 void ppu::render_sprites(uint8_t* scanline_color_ids, const bool* scanline_bg_priority) {
-    // lcdc bit 1: obj enable
+    // LCDC bit 1: OBJ enable
     if (!(this->lcdc & 0x02)) {
         return;
     }
@@ -632,38 +660,8 @@ void ppu::render_sprites(uint8_t* scanline_color_ids, const bool* scanline_bg_pr
     bool is_cgb = this->emu && this->emu->is_cgb_mode();
     int sprite_height = (this->lcdc & 0x04) ? 16 : 8;
 
-    struct sprite_entry {
-        int oam_idx;
-        int x;
-        int y;
-        uint8_t tile;
-        uint8_t flags;
-    };
-
     sprite_entry visible_sprites[10];
-    int sprite_count = 0;
-
-    for (int i = 0; i < 40 && sprite_count < 10; i++) {
-        int y = (int)this->oam[i * 4] - 16;
-        int x = (int)this->oam[i * 4 + 1] - 8;
-        uint8_t tile = this->oam[i * 4 + 2];
-        uint8_t flags = this->oam[i * 4 + 3];
-
-        if (this->ly >= y && this->ly < y + sprite_height) {
-            visible_sprites[sprite_count++] = {i, x, y, tile, flags};
-        }
-    }
-
-    // sort visible sprites by dmg priority if not cgb: smaller x first, tie-break smaller oam index
-    // in cgb mode: priority is strictly oam index (already ascending order)
-    if (!is_cgb) {
-        std::sort(visible_sprites, visible_sprites + sprite_count, [](const sprite_entry& a, const sprite_entry& b) {
-            if (a.x != b.x) {
-                return a.x < b.x;
-            }
-            return a.oam_idx < b.oam_idx;
-        });
-    }
+    int sprite_count = this->collect_visible_sprites(visible_sprites, 10, sprite_height);
 
     bool sprite_drawn[160] = {false};
 

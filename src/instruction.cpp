@@ -945,6 +945,19 @@ void instruction::cb() {
     int mod = byte % 8;
 
     cpu->emu->add_cycles(cb_opcode_cycles[byte]);
+    if (div_result >= 8 && div_result < 16) {
+        bit(div_result - 8, mod);
+        return;
+    }
+    if (div_result >= 16 && div_result < 24) {
+        res(div_result - 16, mod);
+        return;
+    }
+    if (div_result >= 24 && div_result < 32) {
+        set(div_result - 24, mod);
+        return;
+    }
+
     switch (div_result) {
         case 0:
             rlc(mod);
@@ -970,81 +983,10 @@ void instruction::cb() {
         case 7:
             srl(mod);
             return;
-        case 8:
-            bit(0, mod);
-            return;
-        case 9:
-            bit(1, mod);
-            return;
-        case 10:
-            bit(2, mod);
-            return;
-        case 11:
-            bit(3, mod);
-            return;
-        case 12:
-            bit(4, mod);
-            return;
-        case 13:
-            bit(5, mod);
-            return;
-        case 14:
-            bit(6, mod);
-            return;
-        case 15:
-            bit(7, mod);
-            return;
-        case 16:
-            res(0, mod);
-            return;
-        case 17:
-            res(1, mod);
-            return;
-        case 18:
-            res(2, mod);
-            return;
-        case 19:
-            res(3, mod);
-            return;
-        case 20:
-            res(4, mod);
-            return;
-        case 21:
-            res(5, mod);
-            return;
-        case 22:
-            res(6, mod);
-            return;
-        case 23:
-            res(7, mod);
-            return;
-        case 24:
-            set(0, mod);
-            return;
-        case 25:
-            set(1, mod);
-            return;
-        case 26:
-            set(2, mod);
-            return;
-        case 27:
-            set(3, mod);
-            return;
-        case 28:
-            set(4, mod);
-            return;
-        case 29:
-            set(5, mod);
-            return;
-        case 30:
-            set(6, mod);
-            return;
-        case 31:
-            set(7, mod);
-            return;
+        default:
+            std::cout << "Invalid value for CB: " << (int)mod << std::endl;
+            exit(1);
     }
-    std::cout << "Invalid value for CB: " << (int)mod << std::endl;
-    exit(1);
 }
 
 // read cb value from register or memory at HL

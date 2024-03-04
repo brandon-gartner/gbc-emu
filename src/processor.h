@@ -74,6 +74,8 @@ class processor {
     uint16_t reg_sp;
 
    private:
+    uint8_t fetch_imm8();
+    uint16_t fetch_imm16();
     bool double_speed;
     bool speed_switch_prepared;
 };

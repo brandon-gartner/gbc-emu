@@ -156,6 +156,33 @@ void display::sync_frame() {
     }
 }
 
+int display::map_key_to_button(SDL_Keycode key) {
+    switch (key) {
+        case SDLK_RIGHT:
+            return joypad::RIGHT;
+        case SDLK_LEFT:
+            return joypad::LEFT;
+        case SDLK_UP:
+            return joypad::UP;
+        case SDLK_DOWN:
+            return joypad::DOWN;
+        case SDLK_z:
+        case SDLK_j:
+            return joypad::A;
+        case SDLK_x:
+        case SDLK_k:
+            return joypad::B;
+        case SDLK_RETURN:
+            return joypad::START;
+        case SDLK_BACKSPACE:
+        case SDLK_RSHIFT:
+        case SDLK_SPACE:
+            return joypad::SELECT;
+        default:
+            return -1;
+    }
+}
+
 void display::poll_events(emulator* emu) {
     if (!emu) {
         return;
@@ -172,42 +199,14 @@ void display::poll_events(emulator* emu) {
                 if (event.key.repeat) {
                     break;
                 }
-                if (emu->pad) {
-                    switch (event.key.keysym.sym) {
-                        case SDLK_RIGHT:
-                            emu->pad->key_down(joypad::RIGHT);
-                            break;
-                        case SDLK_LEFT:
-                            emu->pad->key_down(joypad::LEFT);
-                            break;
-                        case SDLK_UP:
-                            emu->pad->key_down(joypad::UP);
-                            break;
-                        case SDLK_DOWN:
-                            emu->pad->key_down(joypad::DOWN);
-                            break;
-                        case SDLK_z:
-                        case SDLK_j:
-                            emu->pad->key_down(joypad::A);
-                            break;
-                        case SDLK_x:
-                        case SDLK_k:
-                            emu->pad->key_down(joypad::B);
-                            break;
-                        case SDLK_RETURN:
-                            emu->pad->key_down(joypad::START);
-                            break;
-                        case SDLK_BACKSPACE:
-                        case SDLK_RSHIFT:
-                        case SDLK_SPACE:
-                            emu->pad->key_down(joypad::SELECT);
-                            break;
-                        case SDLK_TAB:
-                            this->turbo_mode = true;
-                            break;
-                        case SDLK_ESCAPE:
-                            emu->set_status(emulator::status::stopped);
-                            break;
+                if (event.key.keysym.sym == SDLK_TAB) {
+                    this->turbo_mode = true;
+                } else if (event.key.keysym.sym == SDLK_ESCAPE) {
+                    emu->set_status(emulator::status::stopped);
+                } else if (emu->pad) {
+                    int btn = map_key_to_button(event.key.keysym.sym);
+                    if (btn != -1) {
+                        emu->pad->key_down((joypad::button)btn);
                     }
                 }
                 break;
@@ -215,37 +214,10 @@ void display::poll_events(emulator* emu) {
             case SDL_KEYUP:
                 if (event.key.keysym.sym == SDLK_TAB) {
                     this->turbo_mode = false;
-                }
-                if (emu->pad) {
-                    switch (event.key.keysym.sym) {
-                        case SDLK_RIGHT:
-                            emu->pad->key_up(joypad::RIGHT);
-                            break;
-                        case SDLK_LEFT:
-                            emu->pad->key_up(joypad::LEFT);
-                            break;
-                        case SDLK_UP:
-                            emu->pad->key_up(joypad::UP);
-                            break;
-                        case SDLK_DOWN:
-                            emu->pad->key_up(joypad::DOWN);
-                            break;
-                        case SDLK_z:
-                        case SDLK_j:
-                            emu->pad->key_up(joypad::A);
-                            break;
-                        case SDLK_x:
-                        case SDLK_k:
-                            emu->pad->key_up(joypad::B);
-                            break;
-                        case SDLK_RETURN:
-                            emu->pad->key_up(joypad::START);
-                            break;
-                        case SDLK_BACKSPACE:
-                        case SDLK_RSHIFT:
-                        case SDLK_SPACE:
-                            emu->pad->key_up(joypad::SELECT);
-                            break;
+                } else if (emu->pad) {
+                    int btn = map_key_to_button(event.key.keysym.sym);
+                    if (btn != -1) {
+                        emu->pad->key_up((joypad::button)btn);
                     }
                 }
                 break;

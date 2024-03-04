@@ -23,6 +23,8 @@ class display {
     void set_turbo(bool enabled) { turbo_mode = enabled; }
     bool is_turbo() const { return turbo_mode; }
 
+    static int map_key_to_button(SDL_Keycode key);
+
    private:
     SDL_Window* window;
     SDL_Renderer* renderer;

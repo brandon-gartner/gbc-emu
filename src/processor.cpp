@@ -104,6 +104,20 @@ void processor::fetch() {
     current->cpu = this;
 }
 
+uint8_t processor::fetch_imm8() {
+    uint8_t val = emu->bus->read8(reg_pc);
+    reg_pc++;
+    return val;
+}
+
+uint16_t processor::fetch_imm16() {
+    uint8_t lo = emu->bus->read8(reg_pc);
+    reg_pc++;
+    uint8_t hi = emu->bus->read8(reg_pc);
+    reg_pc++;
+    return append(lo, hi);
+}
+
 void processor::decode() {
     destination_address = 0;
     destination_is_memory = false;
@@ -117,32 +131,20 @@ void processor::decode() {
             return;
 
         case addressing_mode::REG_D8:
-            fetch_result = emu->bus->read8(reg_pc);
-            reg_pc++;
+            fetch_result = fetch_imm8();
             return;
 
-        case addressing_mode::REG_D16: {
-            uint8_t lo = emu->bus->read8(reg_pc);
-            reg_pc++;
-            uint8_t hi = emu->bus->read8(reg_pc);
-            reg_pc++;
-            fetch_result = append(lo, hi);
+        case addressing_mode::REG_D16:
+            fetch_result = fetch_imm16();
             return;
-        }
 
         case addressing_mode::REG_ADDR8:
-            fetch_result = emu->bus->read8(reg_pc);
-            reg_pc++;
+            fetch_result = fetch_imm8();
             return;
 
-        case addressing_mode::REG_ADDR16: {
-            uint8_t lo = emu->bus->read8(reg_pc);
-            reg_pc++;
-            uint8_t hi = emu->bus->read8(reg_pc);
-            reg_pc++;
-            fetch_result = emu->bus->read8(append(lo, hi));
+        case addressing_mode::REG_ADDR16:
+            fetch_result = emu->bus->read8(fetch_imm16());
             return;
-        }
 
         case addressing_mode::REG_MEMREG: {
             uint16_t address = (current->reg_2 == REG_C) ? (0xFF00 | get_reg(current->reg_2)) : get_reg(current->reg_2);
@@ -161,55 +163,37 @@ void processor::decode() {
             return;
 
         case addressing_mode::D8:
-            fetch_result = emu->bus->read8(emu->cpu->reg_pc);
-            emu->cpu->reg_pc++;
+            fetch_result = fetch_imm8();
             return;
 
         case addressing_mode::D8_REG:
 
-        case addressing_mode::D16: {
-            uint8_t lo = emu->bus->read8(reg_pc);
-            reg_pc++;
-            uint8_t hi = emu->bus->read8(reg_pc);
-            reg_pc++;
-            fetch_result = append(lo, hi);
+        case addressing_mode::D16:
+            fetch_result = fetch_imm16();
             return;
-        }
 
-        case addressing_mode::D16_REG: {
+        case addressing_mode::D16_REG:
             destination_is_memory = true;
-            uint8_t lo = emu->bus->read8(reg_pc);
-            reg_pc++;
-            uint8_t hi = emu->bus->read8(reg_pc);
-            reg_pc++;
-            destination_address = append(lo, hi);
+            destination_address = fetch_imm16();
             fetch_result = get_reg(current->reg_2);
             return;
-        }
 
         case addressing_mode::MEMREG_D8:
             destination_is_memory = true;
-            fetch_result = emu->bus->read8(reg_pc);
-            reg_pc++;
+            fetch_result = fetch_imm8();
             destination_address = get_reg(current->reg_1);
             return;
 
         case addressing_mode::ADDR8_REG:
             destination_is_memory = true;
-            destination_address = (emu->bus->read8(reg_pc) | 0xFF00);
-            reg_pc++;
+            destination_address = (fetch_imm8() | 0xFF00);
             return;
 
-        case addressing_mode::ADDR16_REG: {
+        case addressing_mode::ADDR16_REG:
             destination_is_memory = true;
-            uint8_t lo = emu->bus->read8(reg_pc);
-            reg_pc++;
-            uint8_t hi = emu->bus->read8(reg_pc);
-            reg_pc++;
-            destination_address = append(lo, hi);
+            destination_address = fetch_imm16();
             fetch_result = get_reg(current->reg_2);
             return;
-        }
 
         case addressing_mode::MEMREG:
             destination_is_memory = true;
