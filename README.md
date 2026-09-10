@@ -101,6 +101,27 @@ make clean
 | **Quit / Exit** | `Escape` | Exits and closes the window |
 
 ---
+## Features
+
+### Full DMG (GameBoy) & CGB (GameBoy Color) Support
+Automatic hardware mode detection from the cartridge header, with full DMG backwards-compatibility (authentic boot register values, DMG palette mapping, and correct sprite priority rules).
+
+CGB Double-Speed Mode, including the `KEY1` speed-switch register and `STOP`-based transition mechanism, with cycle scaling applied consistently across CPU, timers, and PPU.
+
+### PPU Accuracy
+Passes DMG-Acid2 with a 100% pixel-perfect reference image, a widely used correctness benchmark specifically designed to catch subtle PPU bugs (window/background layering, sprite priority edge cases) that many scanline renderers get wrong.
+
+Implements a window internal line counter, which prevents visual tearing when the window layer is toggled or repositioned mid-frame. This is a known edge case that trips up most first-pass PPU implementations.
+
+Full CGB color pipeline: 64-entry background/object palettes with auto-increment indexing, correct BG-to-OAM priority resolution, and accurate 15-bit-to-32-bit color conversion.
+
+### DMA Handling
+Implements CGB HDMA with block-by-block transfer during Mode 0, including transfer cancellation and LCD-off fallback handling for cases where the LCD is disabled mid-transfer.
+
+### Cartridge & Memory
+MBC1, MBC3 (with RTC latching), and MBC5 support, plus full VRAM/WRAM banking, covering all standard mapper types.
+
+---
 
 ## Project Structure
 
