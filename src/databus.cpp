@@ -1,8 +1,11 @@
 #include "databus.h"
 
+#include "cartridge.h"
 #include "emulator.h"
 #include "joypad.h"
 #include "ppu.h"
+#include "processor.h"
+#include "ram.h"
 #include "timer.h"
 
 databus::databus(emulator* emu) : emu(emu) {}
@@ -113,6 +116,10 @@ uint8_t databus::io_read(uint16_t address) {
     if (address == 0xFF70) {
         return emu->is_cgb_mode() ? emu->mem->get_svbk() : 0xFF;
     }
+    // sound status register (NR52, 0xFF26)
+    if (address == 0xFF26) {
+        return (io[0x26] & 0x80) | 0x70;
+    }
     return io[address - 0xFF00];
 }
 
@@ -161,6 +168,11 @@ void databus::io_write(uint16_t address, uint8_t value) {
         }
         return;
     }
+    // sound on/off register (NR52, 0xFF26)
+    if (address == 0xFF26) {
+        io[0x26] = value & 0x80;
+        return;
+    }
     // serial transfer for test rom output
     if (address == 0xFF02 && value == 0x81) {
         std::cout << (char)io[0x01] << std::flush;
@@ -169,10 +181,12 @@ void databus::io_write(uint16_t address, uint8_t value) {
 }
 
 uint16_t databus::read16(uint16_t address) {
-    return append(read8(address), read8(address + 1));
+    uint8_t lo = read8(address);
+    uint8_t hi = read8(address + 1);
+    return (static_cast<uint16_t>(hi) << 8) | lo;
 }
 
 void databus::write16(uint16_t address, uint16_t value) {
-    write8(address + 1, (value >> 8) & 0xFF);
-    write8(address, value & 0xFF);
+    write8(address, static_cast<uint8_t>(value & 0xFF));
+    write8(address + 1, static_cast<uint8_t>((value >> 8) & 0xFF));
 }

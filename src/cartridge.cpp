@@ -14,11 +14,11 @@ bool cartridge::load_cartridge(char** argv) {
 
     this->file_size = file.tellg();  // gets current position in input sequence; in this case, the end of the file.
 
-    this->file_data = new uint8_t[this->file_size]();
+    this->file_data.resize(this->file_size);
 
     file.seekg(0, std::ios::beg);  // sets the position of the 'next character' as the first character in the file.
 
-    file.read((char*)this->file_data, this->file_size);
+    file.read(reinterpret_cast<char*>(this->file_data.data()), this->file_size);
     // skip to byte 0x100, beginning of the header, and store it.
     // this is the entry point, tells us how to jump to the main program
     file.seekg(0x100);
@@ -115,8 +115,6 @@ bool cartridge::verify_header_checksum(bool debug) {
 }
 
 cartridge::cartridge() {
-    this->file_data = nullptr;
-    this->ram_data = nullptr;
     this->rom_bank = 1;
     this->ram_bank = 0;
     this->ram_enabled = false;
@@ -128,17 +126,6 @@ cartridge::cartridge() {
     std::memset(this->rtc_latched, 0, sizeof(this->rtc_latched));
     this->rtc_latch_prep = 0xFF;
     this->has_rtc = false;
-}
-
-cartridge::~cartridge() {
-    if (this->file_data) {
-        delete[] this->file_data;
-        this->file_data = nullptr;
-    }
-    if (this->ram_data) {
-        delete[] this->ram_data;
-        this->ram_data = nullptr;
-    }
 }
 
 void cartridge::print_header_hex() {
@@ -205,8 +192,11 @@ void cartridge::allocate_ram(uint8_t ram_size_code) {
             }
             break;
     }
+
     if (this->ram_size_bytes > 0) {
-        this->ram_data = new uint8_t[this->ram_size_bytes]();
+        this->ram_data.assign(this->ram_size_bytes, 0);
+    } else {
+        this->ram_data.clear();
     }
 }
 
@@ -236,7 +226,7 @@ uint8_t cartridge::read_mbc1(uint16_t address) {
     }
     // external ram (0xA000 - 0xBFFF)
     if (address >= 0xA000 && address < 0xC000) {
-        if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+        if (!this->ram_enabled || this->ram_data.empty() || this->ram_size_bytes == 0) {
             return 0xFF;
         }
         uint32_t ram_offset = 0;
@@ -277,7 +267,7 @@ bool cartridge::write_mbc1(uint8_t value, uint16_t address) {
     }
     // external ram write (0xA000 - 0xBFFF)
     if (address >= 0xA000 && address < 0xC000) {
-        if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
+        if (this->ram_enabled && !this->ram_data.empty() && this->ram_size_bytes > 0) {
             uint32_t ram_offset = 0;
             if (this->banking_mode == 0) {
                 ram_offset = (address - 0xA000) % this->ram_size_bytes;
@@ -316,7 +306,7 @@ uint8_t cartridge::read_mbc3(uint16_t address) {
         }
         // ram bank 0x00 - 0x07
         if (this->ram_bank <= 0x07) {
-            if (!this->ram_data || this->ram_size_bytes == 0) {
+            if (this->ram_data.empty() || this->ram_size_bytes == 0) {
                 return 0xFF;
             }
             uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
@@ -367,7 +357,7 @@ bool cartridge::write_mbc3(uint8_t value, uint16_t address) {
     if (address >= 0xA000 && address < 0xC000) {
         if (this->ram_enabled) {
             if (this->ram_bank <= 0x07) {
-                if (this->ram_data && this->ram_size_bytes > 0) {
+                if (!this->ram_data.empty() && this->ram_size_bytes > 0) {
                     uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
                     this->ram_data[ram_offset] = value;
                 }
@@ -401,7 +391,7 @@ uint8_t cartridge::read_mbc5(uint16_t address) {
     }
     // external ram (0xA000 - 0xBFFF, up to 16 banks)
     if (address >= 0xA000 && address < 0xC000) {
-        if (!this->ram_enabled || !this->ram_data || this->ram_size_bytes == 0) {
+        if (!this->ram_enabled || this->ram_data.empty() || this->ram_size_bytes == 0) {
             return 0xFF;
         }
         uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
@@ -437,7 +427,7 @@ bool cartridge::write_mbc5(uint8_t value, uint16_t address) {
     }
     // external ram write (0xA000 - 0xBFFF)
     if (address >= 0xA000 && address < 0xC000) {
-        if (this->ram_enabled && this->ram_data && this->ram_size_bytes > 0) {
+        if (this->ram_enabled && !this->ram_data.empty() && this->ram_size_bytes > 0) {
             uint32_t ram_offset = ((this->ram_bank * 0x2000) + (address - 0xA000)) % this->ram_size_bytes;
             this->ram_data[ram_offset] = value;
         }

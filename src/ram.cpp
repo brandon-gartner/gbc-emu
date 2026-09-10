@@ -1,5 +1,6 @@
-#include "RAM.h"
+#include "ram.h"
 #include <cstring>
+#include "constants.h"
 
 ram::ram() {
     std::memset(wram, 0, sizeof(wram));
@@ -11,8 +12,7 @@ ram::ram() {
 
 uint8_t ram::wram_read(uint16_t address) {
     if (address < 0xC000 || address >= 0xE000) {
-        std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
-        exit(1);
+        return 0xFF;
     }
     if (address < 0xD000) {
         return wram[0][address - 0xC000];
@@ -22,8 +22,7 @@ uint8_t ram::wram_read(uint16_t address) {
 
 void ram::wram_write(uint16_t address, uint8_t value) {
     if (address < 0xC000 || address >= 0xE000) {
-        std::cout << "Invalid wram address received, " << int_to_hex(address) << std::endl;
-        exit(1);
+        return;
     }
     if (address < 0xD000) {
         wram[0][address - 0xC000] = value;
@@ -39,16 +38,14 @@ void ram::set_svbk(uint8_t value) {
 
 uint8_t ram::hram_read(uint16_t address) {
     if (address < 0xFF80 || address == 0xFFFF) {
-        std::cout << "Invalid hram address received, " << int_to_hex(address) << std::endl;
-        exit(1);
+        return 0xFF;
     }
     return hram[address - 0xFF80];
 }
 
 void ram::hram_write(uint16_t address, uint8_t value) {
     if (address < 0xFF80 || address == 0xFFFF) {
-        std::cout << "Invalid hram address received, " << int_to_hex(address) << std::endl;
-        exit(1);
+        return;
     }
     hram[address - 0xFF80] = value;
 }

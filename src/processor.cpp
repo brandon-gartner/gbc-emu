@@ -1,7 +1,10 @@
 #include "processor.h"
 
+#include "databus.h"
+#include "emulator.h"
 #include "instruction.h"
 #include "interrupt.h"
+#include "ram.h"
 
 processor::processor(emulator *emu)
     : emu(emu),
@@ -65,13 +68,16 @@ int processor::step() {
         intr->handle_interrupts();
     }
 
+    int cycles = 0;
     if (processor_status == running || processor_status == stepping) {
         // fetch/decode
         fetch_decode();
         // execute
         execute();
-        emu->add_cycles(instruction::opcode_cycles[opcode]);
+        cycles = instruction::opcode_cycles[opcode];
+        emu->add_cycles(cycles);
     } else {
+        cycles = 1;
         emu->add_cycles(1);
         if (interrupt_flags & emu->mem->get_interrupt() & 0x1F) {
             processor_status = running;
@@ -86,7 +92,7 @@ int processor::step() {
         }
     }
 
-    return 0;
+    return cycles;
 }
 
 void processor::fetch_decode() {
@@ -229,8 +235,7 @@ void processor::decode() {
         case addressing_mode::IMPLIED:
             return;
         default:
-            std::cout << "Invalid addressing mode.  Program terminated." << std::endl;
-            exit(1);
+            return;
     }
 }
 
@@ -269,8 +274,7 @@ uint16_t processor::get_reg(register_type reg) {
         case register_type::REG_PC:
             return reg_pc;
         default:
-            std::cout << "Invalid register accessed: " << (int)reg << " at PC=" << int_to_hex(reg_pc) << " opcode=" << int_to_hex(opcode) << std::endl;
-            exit(1);
+            return 0;
     }
 }
 
@@ -353,41 +357,13 @@ void processor::set_reg_8(register_type type, uint8_t new_val) {
             reg_l = new_val;
             return;
 
-        case NONE:
-        case REG_AF:
-            std::cout << "Invalid register for 8-bit register modification: AF" << std::endl;
-            exit(1);
-        case REG_BC:
-            std::cout << "Invalid register for 8-bit register modification: BC" << std::endl;
-            exit(1);
-        case REG_DE:
-            std::cout << "Invalid register for 8-bit register modification: DE" << std::endl;
-            exit(1);
-        case REG_HL:
-            std::cout << "Invalid register for 8-bit register modification: HL" << std::endl;
-            exit(1);
-        case REG_SP:
-            std::cout << "Invalid register for 8-bit register modification: SP" << std::endl;
-            exit(1);
-        case REG_PC:
-            std::cout << "Invalid register for 8-bit register modification: PC" << std::endl;
-            exit(1);
+        default:
+            return;
     }
 }
 
 void processor::set_reg_16(register_type type, uint16_t new_val) {
     switch (type) {
-        case NONE:
-        case REG_A:
-        case REG_F:
-        case REG_B:
-        case REG_C:
-        case REG_D:
-        case REG_E:
-        case REG_H:
-        case REG_L:
-            std::cout << "Invalid register for 16-bit register modification." << std::endl;
-            exit(1);
         case REG_AF:
             reg_a = new_val >> 8;
             reg_f = new_val & 0xFF;
@@ -410,7 +386,31 @@ void processor::set_reg_16(register_type type, uint16_t new_val) {
         case REG_PC:
             reg_pc = new_val;
             return;
+        default:
+            return;
     }
+}
+
+void processor::push8(uint8_t value) {
+    reg_sp--;
+    emu->bus->write8(reg_sp, value);
+}
+
+uint8_t processor::pop8() {
+    uint8_t val = emu->bus->read8(reg_sp);
+    reg_sp++;
+    return val;
+}
+
+void processor::push16(uint16_t value) {
+    push8(static_cast<uint8_t>((value >> 8) & 0xFF));
+    push8(static_cast<uint8_t>(value & 0xFF));
+}
+
+uint16_t processor::pop16() {
+    uint8_t lo = pop8();
+    uint8_t hi = pop8();
+    return (static_cast<uint16_t>(hi) << 8) | lo;
 }
 
 void processor::set_reg(register_type type, bool sixteen_bit, int new_val) {

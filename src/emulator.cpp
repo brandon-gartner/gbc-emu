@@ -1,41 +1,32 @@
 #include "emulator.h"
 
 #include "cartridge.h"
+#include "databus.h"
 #include "display.h"
 #include "interrupt.h"
 #include "joypad.h"
 #include "ppu.h"
+#include "processor.h"
+#include "ram.h"
 #include "timer.h"
 
 emulator::emulator() {
-    this->cart = new cartridge();
-    this->bus = new databus(this);
-    this->cpu = new processor(this);
-    this->mem = new ram();
-    this->stack = new stack_c(this);
-    this->intr = new interrupt(this->cpu);
-    this->cpu->intr = this->intr;
-    this->tmr = new timer(this);
-    this->vid = new ppu(this);
-    this->pad = new joypad(this);
-    this->disp = new display();
+    this->cart = std::make_unique<cartridge>();
+    this->bus = std::make_unique<databus>(this);
+    this->cpu = std::make_unique<processor>(this);
+    this->mem = std::make_unique<ram>();
+    this->intr = std::make_unique<interrupt>(this->cpu.get());
+    this->cpu->intr = this->intr.get();
+    this->tmr = std::make_unique<timer>(this);
+    this->vid = std::make_unique<ppu>(this);
+    this->pad = std::make_unique<joypad>(this);
+    this->disp = std::make_unique<display>();
     this->main_mode = emulator::status::running;
     this->current = emulator::status::stopped;
     this->is_cgb = false;
 }
 
-emulator::~emulator() {
-    delete this->disp;
-    delete this->pad;
-    delete this->vid;
-    delete this->tmr;
-    delete this->intr;
-    delete this->stack;
-    delete this->mem;
-    delete this->cpu;
-    delete this->bus;
-    delete this->cart;
-}
+emulator::~emulator() = default;
 
 int emulator::run(int argc, char **argv) {
     if (argc < 2) {

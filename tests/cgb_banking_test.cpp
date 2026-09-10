@@ -4,7 +4,7 @@
 #include "databus.h"
 #include "emulator.h"
 #include "ppu.h"
-#include "RAM.h"
+#include "ram.h"
 
 void test_vram_banking() {
     emulator emu;

@@ -1,20 +1,19 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
-#include "RAM.h"
-#include "cartridge.h"
-#include "databus.h"
-#include "processor.h"
+#include <memory>
 #include "shared.h"
-#include "stack_c.h"
 
-class stack_c;
+class cartridge;
 class processor;
+class databus;
+class ram;
 class interrupt;
 class timer;
 class ppu;
 class joypad;
 class display;
+
 class emulator {
    public:
     enum status {
@@ -23,18 +22,23 @@ class emulator {
         stopped
     };
     status main_mode;
-    cartridge *cart;
-    processor *cpu;
-    databus *bus;
-    ram *mem;
-    stack_c *stack;
-    interrupt *intr;
-    timer *tmr;
-    ppu *vid;
-    joypad *pad;
-    display *disp;
+    std::unique_ptr<cartridge> cart;
+    std::unique_ptr<processor> cpu;
+    std::unique_ptr<databus> bus;
+    std::unique_ptr<ram> mem;
+    std::unique_ptr<interrupt> intr;
+    std::unique_ptr<timer> tmr;
+    std::unique_ptr<ppu> vid;
+    std::unique_ptr<joypad> pad;
+    std::unique_ptr<display> disp;
+
     emulator();
     ~emulator();
+    emulator(const emulator&) = delete;
+    emulator& operator=(const emulator&) = delete;
+    emulator(emulator&&) = default;
+    emulator& operator=(emulator&&) = default;
+
     int run(int argc, char **argv);
     int start();
     int add_cycles(int cycles);

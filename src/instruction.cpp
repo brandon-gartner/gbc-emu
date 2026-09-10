@@ -1,6 +1,8 @@
 #include "instruction.h"
 
 #include "shared.h"
+#include "emulator.h"
+#include "databus.h"
 
 int instruction::execute() {
     switch (this->type) {
@@ -299,18 +301,12 @@ void instruction::ldh() {
 
 // make sure no & 0xFF is needed here
 void instruction::push() {
-    uint16_t hi = cpu->get_reg(cpu->current->reg_1) >> 8;
-    cpu->emu->stack->stack_push8(hi);
-
-    uint16_t lo = cpu->get_reg(cpu->current->reg_1) & 0xFF;
-    cpu->emu->stack->stack_push8(lo);
+    uint16_t val = cpu->get_reg(cpu->current->reg_1);
+    cpu->push16(val);
 }
 
 void instruction::pop() {
-    uint16_t lo = cpu->emu->stack->stack_pop8();
-    uint16_t hi = cpu->emu->stack->stack_pop8();
-
-    uint16_t result = append(lo, hi);
+    uint16_t result = cpu->pop16();
 
     if (cpu->current->reg_1 != register_type::REG_AF) {
         cpu->set_reg(cpu->current->reg_1, true, result);
@@ -344,7 +340,7 @@ void instruction::jr() {
 
 void instruction::call() {
     if (check_conditions()) {
-        cpu->emu->stack->stack_push16(cpu->reg_pc);
+        cpu->push16(cpu->reg_pc);
         cpu->set_pc(cpu->fetch_result);
         if (cond != ALWAYS) {
             cpu->emu->add_cycles(3);
@@ -354,9 +350,7 @@ void instruction::call() {
 
 void instruction::ret() {
     if (check_conditions()) {
-        uint16_t lo = cpu->emu->stack->stack_pop8();
-        uint16_t hi = cpu->emu->stack->stack_pop8();
-        cpu->set_pc(append(lo, hi));
+        cpu->set_pc(cpu->pop16());
         if (cond != ALWAYS) {
             cpu->emu->add_cycles(3);
         }
@@ -365,7 +359,7 @@ void instruction::ret() {
 
 void instruction::rst() {
     if (check_conditions()) {
-        cpu->emu->stack->stack_push16(cpu->reg_pc);
+        cpu->push16(cpu->reg_pc);
         cpu->set_pc(cpu->current->parameter);
     }
 }
@@ -591,7 +585,7 @@ const uint8_t instruction::cb_opcode_cycles[256] = {
 };
 
 // whenever using this, set the cpu immediately.
-std::map<uint8_t, instruction*> instruction::instruction_set = {
+static const std::pair<uint8_t, instruction*> raw_instructions[] = {
 
     // 0x0 ✓
     {0x00, new instruction{instruction_type::NOP, addressing_mode::IMPLIED}},
@@ -894,16 +888,13 @@ std::map<uint8_t, instruction*> instruction::instruction_set = {
     {0xFF, new instruction{RST, IMPLIED, NONE, NONE, ALWAYS, (uint8_t)0x38}},
 };
 
-std::map<int, register_type> instruction::cb_registers = {
-    {0, REG_B},
-    {1, REG_C},
-    {2, REG_D},
-    {3, REG_E},
-    {4, REG_H},
-    {5, REG_L},
-    {6, REG_HL},
-    {7, REG_A},
-};
+std::array<instruction*, 256> instruction::instruction_set = []() {
+    std::array<instruction*, 256> arr{};
+    for (const auto& item : raw_instructions) {
+        arr[item.first] = item.second;
+    }
+    return arr;
+}();
 
 void instruction::cb() {
     // register order is: B C D E H L HL A
@@ -984,8 +975,7 @@ void instruction::cb() {
             srl(mod);
             return;
         default:
-            std::cout << "Invalid value for CB: " << (int)mod << std::endl;
-            exit(1);
+            return;
     }
 }
 
@@ -994,7 +984,7 @@ uint8_t instruction::get_cb_val(int mod) {
     if (mod == 6) {
         return cpu->emu->bus->read8(cpu->get_reg(REG_HL));
     }
-    return cpu->get_reg(cb_registers.at(mod));
+    return cpu->get_reg(cb_registers[mod]);
 }
 
 // write cb value to register or memory at HL
@@ -1002,7 +992,7 @@ void instruction::set_cb_val(int mod, uint8_t val) {
     if (mod == 6) {
         cpu->emu->bus->write8(cpu->get_reg(REG_HL), val);
     } else {
-        cpu->set_reg(cb_registers.at(mod), false, val);
+        cpu->set_reg(cb_registers[mod], false, val);
     }
 }
 
@@ -1159,8 +1149,7 @@ bool instruction::check_conditions() {
         case condition_type::N:
             return n;
         default:
-            std::cout << "Invalid condition type.  Program terminated." << std::endl;
-            exit(1);
+            return true;
     }
 }
 

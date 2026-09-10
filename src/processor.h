@@ -48,6 +48,12 @@ class processor {
     void set_reg_8(register_type, uint8_t);
     void set_reg_16(register_type, uint16_t);
 
+    // stack operations
+    void push8(uint8_t value);
+    uint8_t pop8();
+    void push16(uint16_t value);
+    uint16_t pop16();
+
     bool is_double_speed() const { return double_speed; }
     bool is_speed_switch_prepared() const { return speed_switch_prepared; }
     uint8_t read_key1() const;

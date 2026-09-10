@@ -7,7 +7,7 @@
 #include "instruction.h"
 #include "ppu.h"
 #include "processor.h"
-#include "RAM.h"
+#include "ram.h"
 
 void test_gb_backwards_compatibility() {
     emulator emu;

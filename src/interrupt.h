@@ -3,7 +3,6 @@
 
 #include "processor.h"
 #include "shared.h"
-#include "stack_c.h"
 
 class interrupt {
    public:

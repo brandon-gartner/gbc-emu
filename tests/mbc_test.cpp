@@ -14,7 +14,7 @@ class test_cartridge : public cartridge {
         this->cartridge_type_code = type_code;
         this->total_rom_banks = rom_banks_count;
         this->file_size = rom_banks_count * 0x4000;
-        this->file_data = new uint8_t[this->file_size]();
+        this->file_data.assign(this->file_size, 0);
 
         // fill each rom bank with its bank number so we can easily verify reads
         for (uint32_t b = 0; b < rom_banks_count; b++) {
@@ -25,7 +25,7 @@ class test_cartridge : public cartridge {
 
         this->ram_size_bytes = ram_bytes;
         if (ram_bytes > 0) {
-            this->ram_data = new uint8_t[ram_bytes]();
+            this->ram_data.assign(ram_bytes, 0);
         }
 
         if (type_code == 0x0F || type_code == 0x10) {

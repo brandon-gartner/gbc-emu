@@ -1,6 +1,7 @@
 #ifndef INSTRUCTION_H
 #define INSTRUCTION_H
 
+#include <array>
 #include "processor.h"
 #include "shared.h"
 
@@ -9,8 +10,17 @@ class processor;
 class instruction {
    private:
    public:
-    static std::map<uint8_t, instruction*> instruction_set;
-    static std::map<int, register_type> cb_registers;
+    static std::array<instruction*, 256> instruction_set;
+    static constexpr std::array<register_type, 8> cb_registers = {
+        register_type::REG_B,
+        register_type::REG_C,
+        register_type::REG_D,
+        register_type::REG_E,
+        register_type::REG_H,
+        register_type::REG_L,
+        register_type::NONE,
+        register_type::REG_A
+    };
     static const uint8_t opcode_cycles[256];
     static const uint8_t cb_opcode_cycles[256];
 

@@ -1,4 +1,6 @@
 #include "interrupt.h"
+#include "emulator.h"
+#include "ram.h"
 
 interrupt::interrupt(processor* cpu) : cpu(cpu) {}
 
@@ -15,12 +17,11 @@ uint16_t interrupt::get_interrupt_address(interrupt_type type) {
         case joypad:
             return 0x60;
     }
-    std::cout << "Invalid interrupt type.  Terminating." << std::endl;
-    exit(1);
+    return 0x00;
 }
 
 void interrupt::handle_interrupt(uint16_t address) {
-    cpu->emu->stack->stack_push16(cpu->get_reg(REG_PC));
+    cpu->push16(cpu->get_reg(REG_PC));
     cpu->set_pc(address);
     cpu->emu->add_cycles(5);
 }

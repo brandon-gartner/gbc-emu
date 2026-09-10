@@ -205,18 +205,9 @@ bool reg_is_8bit(register_type reg) {
         case REG_HL:
         case REG_SP:
         case REG_PC:
-            return false;
         case NONE:
-            std::cout << "Invalid register." << std::endl;
-            exit(1);
+        default:
+            return false;
     }
     return false;
-}
-
-uint16_t append(uint8_t lo, uint8_t hi) {
-    int returned = 0;
-    returned |= hi;
-    returned <<= 8;
-    returned |= lo;
-    return returned;
 }

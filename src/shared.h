@@ -9,9 +9,8 @@
 #include <sstream>
 #include <string>
 
-#define NOT_IMPLEMENTED()                                                         \
-    std::cout << "Not implemented: " << __FILE__ << ":" << __LINE__ << std::endl; \
-    exit(1);
+#define NOT_IMPLEMENTED() \
+    std::cerr << "Not implemented: " << __FILE__ << ":" << __LINE__ << std::endl
 
 enum instruction_type {
     ADC,
@@ -126,6 +125,8 @@ void print_instructions(instruction_type type, addressing_mode mode, register_ty
 std::string int_to_hex(uint8_t i);
 std::string int_to_hex(uint16_t value);
 bool reg_is_8bit(register_type reg);
-uint16_t append(uint8_t, uint8_t);
+inline constexpr uint16_t append(uint8_t lo, uint8_t hi) noexcept {
+    return (static_cast<uint16_t>(hi) << 8) | lo;
+}
 
 #endif

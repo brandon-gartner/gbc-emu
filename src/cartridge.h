@@ -1,10 +1,13 @@
 #ifndef CARTRIDGE_H
 #define CARTRIDGE_H
+
+#include <vector>
 #include "shared.h"
+
 class cartridge {
    public:
     std::string file_name;
-    uint8_t *file_data = {0};  // we don't know how big it will be, yet.
+    std::vector<uint8_t> file_data;
     uint32_t file_size;
     std::string game_title;
     std::string new_publisher;
@@ -37,7 +40,7 @@ class cartridge {
     uint8_t ram_bank;
     bool ram_enabled;
     uint8_t banking_mode;
-    uint8_t *ram_data;
+    std::vector<uint8_t> ram_data;
     uint32_t ram_size_bytes;
     int total_rom_banks;
 
@@ -58,7 +61,7 @@ class cartridge {
 
    public:
     cartridge();
-    ~cartridge();
+    ~cartridge() = default;
     bool load_cartridge(char **argv);
     void print_cartridge_info();
     void print_header_hex();

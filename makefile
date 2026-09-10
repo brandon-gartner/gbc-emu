@@ -2,7 +2,7 @@
 CXX = g++
 
 # Flags for g++
-CXXFLAGS = -Wall -Wextra -std=c++11 -g $(shell sdl2-config --cflags)
+CXXFLAGS = -Wall -Wextra -std=c++17 -g $(shell sdl2-config --cflags)
 LDFLAGS = $(shell sdl2-config --libs)
 
 #Output file
@@ -28,7 +28,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 clean:
-	rm -f $(OBJECTS) $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test tests/cgb_init_test tests/cgb_banking_test tests/cgb_palette_test tests/cgb_render_test tests/cgb_speed_test tests/cgb_dma_test tests/cgb_integration_test
+	rm -f $(OBJDIR)/*.o $(OUTPUT) tests/joypad_test tests/mbc_test tests/timing_test tests/frame_sync_test tests/cgb_init_test tests/cgb_banking_test tests/cgb_palette_test tests/cgb_render_test tests/cgb_speed_test tests/cgb_dma_test tests/cgb_integration_test
 
 test: $(OBJECTS)
 	$(CXX) $(CXXFLAGS) -Isrc tests/joypad_test.cpp $(filter-out $(OBJDIR)/main.o, $(OBJECTS)) -o tests/joypad_test $(LDFLAGS)

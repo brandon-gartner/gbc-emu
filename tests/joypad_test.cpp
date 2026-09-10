@@ -9,7 +9,7 @@
 
 int main() {
     emulator emu;
-    joypad* pad = emu.pad;
+    joypad* pad = emu.pad.get();
 
     // clear IF register
     emu.cpu->interrupt_flags = 0;
