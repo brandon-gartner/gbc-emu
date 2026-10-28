@@ -1,6 +1,6 @@
 # gbc-emu
 
-A Game Boy (GB) and Game Boy Color (GBC) emulator written in C++11 using SDL2.
+A Game Boy (GB) and Game Boy Color (GBC) emulator written in C++17 using SDL2.
 
 By [Brandon Gartner](https://github.com/brandon-gartner)
 
@@ -37,7 +37,7 @@ By [Brandon Gartner](https://github.com/brandon-gartner)
 ## Building & Running
 
 ### Prerequisites
-- **C++11** compatible compiler (GCC `g++` or Clang)
+- **C++17** compatible compiler (GCC `g++` or Clang)
 - **Make**
 - **SDL2** development libraries
 
